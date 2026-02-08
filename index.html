@@ -23,14 +23,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .accent-bar{height:4px;background:linear-gradient(90deg,var(--primary),#8b5cf6)}
 
 /* ── Header ── */
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:10px}
-.header-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.header-left h1{font-size:17px;font-weight:600;letter-spacing:-.2px;white-space:nowrap}
-.badge{background:var(--primary-light);color:var(--primary);font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px}
-.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.header-left h1{font-size:17px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{background:var(--primary-light);color:var(--primary);font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;flex-shrink:0}
+.header-controls{display:flex;align-items:center;gap:8px;flex-shrink:0}
 
 /* ── League Switcher ── */
-.league-switch{display:flex;background:var(--bg);border-radius:var(--rs);padding:3px;margin-right:4px}
+.league-switch{display:flex;background:var(--bg);border-radius:var(--rs);padding:3px}
 .league-btn{padding:6px 14px;border:none;background:0 0;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;white-space:nowrap}
 .league-btn:hover{color:var(--text)}
 .league-btn.active{background:var(--primary);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.10)}
@@ -48,7 +48,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
 /* ── Refresh ── */
-.refresh-btn{width:32px;height:32px;border:1px solid var(--border);background:var(--surface);border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;color:var(--text2)}
+.refresh-btn{width:34px;height:34px;border:1px solid var(--border);background:var(--surface);border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;color:var(--text2);flex-shrink:0}
 .refresh-btn:hover{background:var(--bg);color:var(--text)}
 .refresh-btn.spin{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -80,21 +80,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .match-row{display:grid;grid-template-columns:56px 1fr 72px 1fr 84px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--border-light);transition:background .1s;gap:8px}
 .match-row:last-child{border-bottom:none}
 .match-row:hover{background:#fafbfc}
-
 .m-time{font-size:13px;font-weight:500;color:var(--text2)}
 .m-mobile-meta{display:none}
-
 .team{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;min-width:0}
 .team.home{justify-content:flex-end;text-align:right}
 .team.away{justify-content:flex-start}
 .team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .team-icon{width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:2px}
 .team-score{display:none;font-weight:700;font-size:15px;margin-left:auto;flex-shrink:0;min-width:18px;text-align:right}
-
 .score{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;gap:4px;white-space:nowrap}
 .score.fin{color:var(--text)}.score.upc{color:var(--text3);font-weight:400;font-size:12px}.score.live{color:var(--red)}
 .score-sep{color:var(--text3);font-weight:400}
-
 .m-status{text-align:right}
 .st{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;white-space:nowrap}
 .st-fin{background:var(--green-bg);color:var(--green)}
@@ -106,25 +102,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .live-header h2{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
 .live-meta{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px}
 .live-meta .auto-tag{background:var(--green-bg);color:var(--green);font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px}
-
 .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-
 .live-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative}
 .live-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--red)}
 .live-card-body{padding:20px 24px}
-
 .live-teams{display:flex;flex-direction:column;gap:14px}
 .live-team-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .live-team-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 .live-team-info .team-icon{width:28px;height:28px}
 .live-team-name{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .live-team-score{font-size:28px;font-weight:800;min-width:28px;text-align:right}
-
 .live-card-footer{padding:10px 24px;background:#fafafa;border-top:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between}
 .live-minute{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--red)}
 .live-minute .live-dot{width:6px;height:6px}
 .live-matchday{font-size:12px;color:var(--text3)}
-
 .live-empty{text-align:center;padding:40px 20px;color:var(--text2)}
 .live-empty .ico{font-size:32px;margin-bottom:8px}
 .live-empty p{font-size:14px}
@@ -162,8 +153,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 
 /* ── Mobile ── */
 @media(max-width:699px){
-  .header{padding:12px 16px}
+  /* Header: 2-row grid layout */
+  .header{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto;
+    gap:8px 10px;
+    padding:12px 16px;
+  }
+  .header-left{grid-column:1;grid-row:1;min-width:0}
   .header-left h1{font-size:15px}
+  .refresh-btn{grid-column:2;grid-row:1;align-self:center}
+  .header-controls{
+    grid-column:1 / -1;
+    grid-row:2;
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+  }
+  .league-btn{padding:5px 10px;font-size:12px}
+  .view-btn{padding:5px 10px;font-size:12px}
+
   .matchday-nav{padding:0 16px;top:auto;position:relative}
   .content{padding:0 12px;margin:12px auto}
   .date-sep{padding:8px 16px}
@@ -182,8 +192,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
   .lt .tc{gap:6px}
   .team-icon{width:20px;height:20px}
 
-  .league-btn{padding:5px 10px;font-size:12px}
-
   .live-grid{grid-template-columns:1fr}
   .live-card-body{padding:16px}
   .live-card-footer{padding:8px 16px}
@@ -201,7 +209,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
     <h1 id="pageTitle">⚽ Bundesliga</h1>
     <span class="badge" id="badgeSeason"></span>
   </div>
-  <div class="header-right">
+  <div class="header-controls">
     <div class="league-switch" id="leagueSwitch">
       <button class="league-btn" data-league="frauen">👩 Frauen</button>
       <button class="league-btn" data-league="maenner">👨 Männer</button>
@@ -211,8 +219,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
       <button class="view-btn active" data-view="schedule">Spielplan</button>
       <button class="view-btn" data-view="table">Tabelle</button>
     </div>
-    <button class="refresh-btn" id="btnRefresh" title="Aktualisieren">↻</button>
   </div>
+  <button class="refresh-btn" id="btnRefresh" title="Aktualisieren">↻</button>
 </header>
 
 <nav class="matchday-nav" id="navMD">
@@ -237,8 +245,8 @@ const LEAGUES = {
 };
 
 const API = 'https://api.openligadb.de';
-const LIVE_POLL_MS  = 60000;   // Auto-Refresh alle 60 Sek.
-const MATCH_DUR_MS  = 130*60000; // ~130 Min. max (inkl. Nachspielzeit/Pause)
+const LIVE_POLL_MS  = 60000;
+const MATCH_DUR_MS  = 130*60000;
 
 const NOW    = new Date();
 const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
@@ -276,28 +284,21 @@ function fmtDate(s) {
 function isLive(m) {
   if (m.matchIsFinished) return false;
   const ms = Date.now() - new Date(m.matchDateTime).getTime();
-  if (ms < 0 || ms > MATCH_DUR_MS) return false;
-  // Has started (time has passed) — could have results or not yet
-  return true;
+  return ms >= 0 && ms <= MATCH_DUR_MS;
 }
 
-function getLiveMatches() {
-  return S.matches.filter(isLive);
-}
+function getLiveMatches() { return S.matches.filter(isLive); }
 
 function matchMinute(m) {
   const ms = Date.now() - new Date(m.matchDateTime).getTime();
   const min = Math.floor(ms / 60000);
   if (min <= 45) return min + "'";
   if (min > 45 && min <= 60) return "HZ";
-  if (min > 60) return (min - 15) + "'";  // rough: subtract ~15 min halftime
+  if (min > 60) return (min - 15) + "'";
   return min + "'";
 }
 
-function fmtTime(d) {
-  return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}
-
+function fmtTime(d) { return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
 function groupByDay(matches) {
@@ -312,26 +313,17 @@ function groupByDay(matches) {
 }
 
 // ━━━ Live Polling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function startPolling() {
-  stopPolling();
-  S.pollTimer = setInterval(() => refreshData(true), LIVE_POLL_MS);
-}
-
-function stopPolling() {
-  if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
-}
+function startPolling() { stopPolling(); S.pollTimer = setInterval(() => refreshData(true), LIVE_POLL_MS); }
+function stopPolling() { if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; } }
 
 async function refreshData(silent) {
-  const lk = leagueCfg().key;
   try {
-    const matches = await api(`/getmatchdata/${lk}/${SEASON}`);
+    const matches = await api(`/getmatchdata/${leagueCfg().key}/${SEASON}`);
     S.matches = matches;
     S.mdays   = groupByDay(matches);
     S.order   = Object.keys(S.mdays).map(Number).sort((a,b)=>a-b);
     S.lastUpdate = new Date();
-
     updateLiveIndicator();
-
     if (S.view === 'schedule') renderMatches();
     if (S.view === 'live') renderLive();
     if (S.view === 'table') { S.table = null; loadTable(); }
@@ -344,7 +336,7 @@ function updateLiveIndicator() {
   const btn = document.querySelector('.live-btn');
   if (live.length > 0) {
     btn.classList.add('has-live');
-    if (S.view !== 'live' && !S.pollTimer) startPolling();
+    if (!S.pollTimer) startPolling();
   } else {
     btn.classList.remove('has-live');
     if (S.view === 'live') switchView('schedule');
@@ -354,9 +346,7 @@ function updateLiveIndicator() {
 
 // ━━━ Render: League Buttons ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function renderLeagueSwitch() {
-  document.querySelectorAll('.league-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.league === S.league)
-  );
+  document.querySelectorAll('.league-btn').forEach(b => b.classList.toggle('active', b.dataset.league === S.league));
   $('pageTitle').textContent = leagueCfg().title;
 }
 
@@ -385,26 +375,21 @@ function renderMatches() {
     el.innerHTML = '<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Spiele</h3><p>Für diesen Spieltag liegen keine Daten vor.</p></div></div>';
     return;
   }
-
   const fin = md.matches.filter(m=>m.matchIsFinished).length;
-
   const byDate = new Map();
   for (const m of md.matches) {
     const k = fmtDate(m.matchDateTime).full;
     if (!byDate.has(k)) byDate.set(k,[]);
     byDate.get(k).push(m);
   }
-
   let rows = '';
   for (const [label, matches] of byDate) {
     rows += `<div class="date-sep">${esc(label)}</div>`;
     for (const m of matches) rows += matchRow(m);
   }
-
   el.innerHTML = `<div class="card">
     <div class="card-header"><h2>${esc(md.name)}</h2><span class="pill pill-muted">${fin} / ${md.matches.length} beendet</span></div>
-    ${rows}
-  </div>`;
+    ${rows}</div>`;
 }
 
 function matchRow(m) {
@@ -412,98 +397,66 @@ function matchRow(m) {
   const r  = finalResult(m);
   const li = isLive(m);
   const t1 = m.team1, t2 = m.team2;
-  const n1 = esc(t1.shortName||t1.teamName);
-  const n2 = esc(t2.shortName||t2.teamName);
+  const n1 = esc(t1.shortName||t1.teamName), n2 = esc(t2.shortName||t2.teamName);
   const i1 = t1.teamIconUrl ? `<img class="team-icon" src="${t1.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
   const i2 = t2.teamIconUrl ? `<img class="team-icon" src="${t2.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
-
   let scoreD, scoreM1='', scoreM2='', stHTML, metaSt;
-
   if (m.matchIsFinished && r) {
-    scoreD  = `<div class="score fin">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
+    scoreD = `<div class="score fin">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
     scoreM1 = r.pointsTeam1; scoreM2 = r.pointsTeam2;
-    stHTML  = '<span class="st st-fin">Beendet</span>';
-    metaSt  = stHTML;
+    stHTML = '<span class="st st-fin">Beendet</span>'; metaSt = stHTML;
   } else if (li && r) {
-    scoreD  = `<div class="score live">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
+    scoreD = `<div class="score live">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
     scoreM1 = r.pointsTeam1; scoreM2 = r.pointsTeam2;
-    stHTML  = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`;
-    metaSt  = stHTML;
+    stHTML = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`; metaSt = stHTML;
   } else if (li) {
-    scoreD  = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
+    scoreD = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
     scoreM1 = '0'; scoreM2 = '0';
-    stHTML  = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`;
-    metaSt  = stHTML;
+    stHTML = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`; metaSt = stHTML;
   } else {
-    scoreD  = `<div class="score upc">${d.tm} Uhr</div>`;
-    stHTML  = `<span class="st st-upc">${d.wd}. ${d.dd}</span>`;
-    metaSt  = `<span class="st st-upc">${d.tm} Uhr</span>`;
+    scoreD = `<div class="score upc">${d.tm} Uhr</div>`;
+    stHTML = `<span class="st st-upc">${d.wd}. ${d.dd}</span>`;
+    metaSt = `<span class="st st-upc">${d.tm} Uhr</span>`;
   }
-
   return `<div class="match-row">
     <div class="m-mobile-meta"><span>${d.wd}. ${d.dd}</span>${metaSt}</div>
     <div class="m-time">${d.tm}</div>
     <div class="team home"><span class="team-name">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
     <div class="team away">${i2}<span class="team-name">${n2}</span><span class="team-score">${scoreM2}</span></div>
-    <div class="m-status">${stHTML}</div>
-  </div>`;
+    <div class="m-status">${stHTML}</div></div>`;
 }
 
 // ━━━ Render: Live View ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function renderLive() {
   const el = $('viewLive');
   const live = getLiveMatches();
-
   if (!live.length) {
     el.innerHTML = `<div class="live-empty"><div class="ico">😴</div><p>Aktuell läuft kein Spiel.</p></div>`;
     return;
   }
-
   const updTxt = S.lastUpdate ? fmtTime(S.lastUpdate) : '–';
-
   let cards = '';
   for (const m of live) {
-    const r  = finalResult(m);
+    const r = finalResult(m);
     const t1 = m.team1, t2 = m.team2;
-    const n1 = esc(t1.shortName||t1.teamName);
-    const n2 = esc(t2.shortName||t2.teamName);
+    const n1 = esc(t1.shortName||t1.teamName), n2 = esc(t2.shortName||t2.teamName);
     const i1 = t1.teamIconUrl ? `<img class="team-icon" src="${t1.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
     const i2 = t2.teamIconUrl ? `<img class="team-icon" src="${t2.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
-    const s1 = r ? r.pointsTeam1 : 0;
-    const s2 = r ? r.pointsTeam2 : 0;
+    const s1 = r ? r.pointsTeam1 : 0, s2 = r ? r.pointsTeam2 : 0;
     const min = matchMinute(m);
     const mdName = m.group ? esc(m.group.groupName) : '';
-
-    cards += `<div class="live-card">
-      <div class="live-card-body">
-        <div class="live-teams">
-          <div class="live-team-row">
-            <div class="live-team-info">${i1}<span class="live-team-name">${n1}</span></div>
-            <span class="live-team-score">${s1}</span>
-          </div>
-          <div class="live-team-row">
-            <div class="live-team-info">${i2}<span class="live-team-name">${n2}</span></div>
-            <span class="live-team-score">${s2}</span>
-          </div>
-        </div>
-      </div>
-      <div class="live-card-footer">
-        <span class="live-minute"><span class="live-dot"></span> ${min}</span>
-        <span class="live-matchday">${mdName}</span>
-      </div>
-    </div>`;
+    cards += `<div class="live-card"><div class="live-card-body"><div class="live-teams">
+      <div class="live-team-row"><div class="live-team-info">${i1}<span class="live-team-name">${n1}</span></div><span class="live-team-score">${s1}</span></div>
+      <div class="live-team-row"><div class="live-team-info">${i2}<span class="live-team-name">${n2}</span></div><span class="live-team-score">${s2}</span></div>
+    </div></div><div class="live-card-footer">
+      <span class="live-minute"><span class="live-dot"></span> ${min}</span><span class="live-matchday">${mdName}</span>
+    </div></div>`;
   }
-
-  el.innerHTML = `
-    <div class="live-header">
-      <h2><span class="live-dot"></span> ${live.length} Live-Spiel${live.length>1?'e':''}</h2>
-      <div class="live-meta">
-        <span class="auto-tag">Auto-Refresh</span>
-        <span>Aktualisiert: ${updTxt}</span>
-      </div>
-    </div>
-    <div class="live-grid">${cards}</div>`;
+  el.innerHTML = `<div class="live-header">
+    <h2><span class="live-dot"></span> ${live.length} Live-Spiel${live.length>1?'e':''}</h2>
+    <div class="live-meta"><span class="auto-tag">Auto-Refresh</span><span>Aktualisiert: ${updTxt}</span></div>
+  </div><div class="live-grid">${cards}</div>`;
 }
 
 // ━━━ Render: Table ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -516,43 +469,34 @@ function renderTable() {
   const rows = S.table.map((t,i) => {
     const ic = t.teamIconUrl ? `<img class="team-icon" src="${t.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
     const nm = esc(t.shortName||t.teamName);
-    const df = t.goalDiff;
-    const dc = df>0?'pos':df<0?'neg':'';
-    const ds = df>0?'+'+df:df;
+    const df = t.goalDiff, dc = df>0?'pos':df<0?'neg':'', ds = df>0?'+'+df:df;
     return `<tr><td class="rk">${i+1}</td><td><div class="tc">${ic}<span>${nm}</span></div></td>
       <td class="c">${t.matches}</td><td class="c">${t.won}</td><td class="c">${t.draw}</td><td class="c">${t.lost}</td>
       <td class="c">${t.goals}:${t.opponentGoals}</td><td class="diff ${dc}">${ds}</td><td class="pts">${t.points}</td></tr>`;
   }).join('');
-
   el.innerHTML = `<div class="card">
     <div class="card-header"><h2>Tabelle – ${esc(leagueCfg().label)}</h2><span class="pill pill-muted">Saison ${SEASON}/${String(SEASON+1).slice(-2)}</span></div>
-    <div style="overflow-x:auto">
-      <table class="lt"><thead><tr>
-        <th class="c">#</th><th>Verein</th><th class="c">Sp</th><th class="c">S</th><th class="c">U</th><th class="c">N</th><th class="c">Tore</th><th class="c">Diff</th><th class="c">Pkt</th>
-      </tr></thead><tbody>${rows}</tbody></table>
-    </div></div>`;
+    <div style="overflow-x:auto"><table class="lt"><thead><tr>
+      <th class="c">#</th><th>Verein</th><th class="c">Sp</th><th class="c">S</th><th class="c">U</th><th class="c">N</th><th class="c">Tore</th><th class="c">Diff</th><th class="c">Pkt</th>
+    </tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
 // ━━━ View Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function switchView(v) {
-  // Prevent switching to live if no live matches
   if (v === 'live' && getLiveMatches().length === 0) return;
-
   S.view = v;
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view===v));
   $('viewSchedule').classList.toggle('hidden', v!=='schedule');
   $('navMD').classList.toggle('hidden', v!=='schedule');
   $('viewLive').classList.toggle('hidden', v!=='live');
   $('viewTable').classList.toggle('hidden', v!=='table');
-
   if (v==='table' && !S.table) loadTable();
   if (v==='live') { renderLive(); startPolling(); }
   if (v!=='live' && !getLiveMatches().length) stopPolling();
 }
 
 async function loadTable() {
-  const lk = leagueCfg().key;
-  try { S.table = await api(`/getbltable/${lk}/${SEASON}`); renderTable(); }
+  try { S.table = await api(`/getbltable/${leagueCfg().key}/${SEASON}`); renderTable(); }
   catch(e) {
     $('viewTable').innerHTML = `<div class="card"><div class="state-msg"><div class="ico">⚠️</div><h3>Fehler</h3><p>${esc(e.message)}</p>
       <button class="btn-retry" onclick="loadTable()">Erneut versuchen</button></div></div>`;
@@ -562,14 +506,10 @@ async function loadTable() {
 // ━━━ League Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function switchLeague(key) {
   if (S.league === key) return;
-  S.league = key;
-  S.table  = null;
-  stopPolling();
+  S.league = key; S.table = null; stopPolling();
   renderLeagueSwitch();
   try { localStorage.setItem('bl-league', key); } catch(e){}
-  // Reset to schedule view
-  switchView('schedule');
-  init();
+  switchView('schedule'); init();
 }
 
 // ━━━ Events ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -579,65 +519,44 @@ $('tabsMD').addEventListener('click', e => {
   S.sel = parseInt(t.dataset.md);
   renderTabs(); renderMatches();
 });
-
 $('viewToggle').addEventListener('click', e => {
   const b = e.target.closest('.view-btn');
   if (b) switchView(b.dataset.view);
 });
-
 $('leagueSwitch').addEventListener('click', e => {
   const b = e.target.closest('.league-btn');
   if (b) switchLeague(b.dataset.league);
 });
-
 $('btnRefresh').addEventListener('click', () => { S.table=null; init(); });
 
 // ━━━ Init ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 async function init() {
-  const rb = $('btnRefresh');
-  rb.classList.add('spin');
-
-  const lk = leagueCfg().key;
+  const rb = $('btnRefresh'); rb.classList.add('spin');
   $('badgeSeason').textContent = SEASON+'/'+String(SEASON+1).slice(-2);
   renderLeagueSwitch();
-
   $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>';
   $('tabsMD').innerHTML = '<span class="md-label">Spieltag</span>';
-
   try {
     const [matches, cg] = await Promise.all([
-      api(`/getmatchdata/${lk}/${SEASON}`),
-      api(`/getcurrentgroup/${lk}`)
+      api(`/getmatchdata/${leagueCfg().key}/${SEASON}`),
+      api(`/getcurrentgroup/${leagueCfg().key}`)
     ]);
     S.matches = matches;
-    S.mdays   = groupByDay(matches);
-    S.order   = Object.keys(S.mdays).map(Number).sort((a,b)=>a-b);
-    S.cur     = cg.groupOrderID;
-    S.sel     = cg.groupOrderID;
+    S.mdays = groupByDay(matches);
+    S.order = Object.keys(S.mdays).map(Number).sort((a,b)=>a-b);
+    S.cur = cg.groupOrderID; S.sel = cg.groupOrderID;
     S.lastUpdate = new Date();
-
-    renderTabs();
-    renderMatches();
-    updateLiveIndicator();
-
-    // Auto-switch to live view if matches are running
-    //const live = getLiveMatches();
-    //if (live.length > 0 && S.view === 'schedule') {
-    //  switchView('live');
-    //}
-
+    renderTabs(); renderMatches(); updateLiveIndicator();
     if (S.view === 'table') { S.table=null; loadTable(); }
   } catch(e) {
     $('viewSchedule').innerHTML = `<div class="card"><div class="state-msg">
       <div class="ico">⚠️</div><h3>Daten konnten nicht geladen werden</h3>
       <p>Bitte Internetverbindung prüfen oder später erneut versuchen.</p>
       <p style="margin-top:6px;font-size:12px;color:var(--text3)">${esc(e.message)}</p>
-      <button class="btn-retry" onclick="init()">Erneut versuchen</button>
-    </div></div>`;
+      <button class="btn-retry" onclick="init()">Erneut versuchen</button></div></div>`;
   } finally { rb.classList.remove('spin'); }
 }
 
-// Restore league preference
 try { const saved = localStorage.getItem('bl-league'); if (saved && LEAGUES[saved]) S.league = saved; } catch(e){}
 init();
 </script>
