@@ -37,9 +37,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 
 /* ── View Toggle ── */
 .view-toggle{display:flex;background:var(--bg);border-radius:var(--rs);padding:3px}
-.view-btn{padding:6px 14px;border:none;background:0 0;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text2);transition:all .15s}
+.view-btn{padding:6px 14px;border:none;background:0 0;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;white-space:nowrap}
 .view-btn:hover{color:var(--text)}
 .view-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.view-btn.live-btn{display:none}
+.view-btn.live-btn.has-live{display:flex;align-items:center;gap:5px}
+
+/* ── Live Pulse ── */
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;animation:pulse-dot 1.5s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
 /* ── Refresh ── */
 .refresh-btn{width:32px;height:32px;border:1px solid var(--border);background:var(--surface);border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;color:var(--text2)}
@@ -95,6 +101,34 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .st-upc{background:var(--amber-bg);color:var(--amber)}
 .st-live{background:var(--red-bg);color:var(--red)}
 
+/* ── Live View ── */
+.live-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.live-header h2{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.live-meta{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px}
+.live-meta .auto-tag{background:var(--green-bg);color:var(--green);font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px}
+
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+
+.live-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative}
+.live-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--red)}
+.live-card-body{padding:20px 24px}
+
+.live-teams{display:flex;flex-direction:column;gap:14px}
+.live-team-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.live-team-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.live-team-info .team-icon{width:28px;height:28px}
+.live-team-name{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-team-score{font-size:28px;font-weight:800;min-width:28px;text-align:right}
+
+.live-card-footer{padding:10px 24px;background:#fafafa;border-top:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between}
+.live-minute{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--red)}
+.live-minute .live-dot{width:6px;height:6px}
+.live-matchday{font-size:12px;color:var(--text3)}
+
+.live-empty{text-align:center;padding:40px 20px;color:var(--text2)}
+.live-empty .ico{font-size:32px;margin-bottom:8px}
+.live-empty p{font-size:14px}
+
 /* ── League Table ── */
 .lt{width:100%;border-collapse:collapse}
 .lt th{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);background:#fafafa;border-bottom:1px solid var(--border)}
@@ -134,16 +168,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
   .content{padding:0 12px;margin:12px auto}
   .date-sep{padding:8px 16px}
 
-  .match-row{
-    display:flex;flex-direction:column;gap:6px;padding:12px 16px
-  }
+  .match-row{display:flex;flex-direction:column;gap:6px;padding:12px 16px}
   .m-time{display:none}
   .score{display:none}
   .m-status{display:none}
-  .m-mobile-meta{
-    display:flex;justify-content:space-between;align-items:center;
-    font-size:12px;color:var(--text2)
-  }
+  .m-mobile-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text2)}
   .team{justify-content:flex-start!important;text-align:left!important;width:100%}
   .team.home{flex-direction:row}
   .team.home .team-icon{order:-1}
@@ -154,6 +183,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
   .team-icon{width:20px;height:20px}
 
   .league-btn{padding:5px 10px;font-size:12px}
+
+  .live-grid{grid-template-columns:1fr}
+  .live-card-body{padding:16px}
+  .live-card-footer{padding:8px 16px}
+  .live-team-score{font-size:24px}
+  .live-team-name{font-size:14px}
 }
 </style>
 </head>
@@ -172,6 +207,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
       <button class="league-btn" data-league="maenner">👨 Männer</button>
     </div>
     <div class="view-toggle" id="viewToggle">
+      <button class="view-btn live-btn" data-view="live"><span class="live-dot"></span> Live</button>
       <button class="view-btn active" data-view="schedule">Spielplan</button>
       <button class="view-btn" data-view="table">Tabelle</button>
     </div>
@@ -187,6 +223,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
   <div id="viewSchedule">
     <div class="card"><div class="state-msg" id="loadingSch"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>
   </div>
+  <div id="viewLive" class="hidden"></div>
   <div id="viewTable" class="hidden"></div>
 </main>
 
@@ -194,28 +231,26 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 
 <script>
 // ━━━ Liga-Konfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Kürzel prüfen unter: https://openligadb.de/Leagues
 const LEAGUES = {
-  frauen:  { key:'fbl1', label:'Frauen-Bundesliga',  emoji:'👩', title:'⚽ Frauen-Bundesliga' },
-  maenner: { key:'bl1',  label:'Männer-Bundesliga',  emoji:'👨', title:'⚽ Bundesliga' }
+  frauen:  { key:'fbl1', label:'Frauen-Bundesliga',  title:'⚽ Frauen-Bundesliga' },
+  maenner: { key:'bl1',  label:'Männer-Bundesliga',  title:'⚽ Bundesliga' }
 };
 
 const API = 'https://api.openligadb.de';
+const LIVE_POLL_MS  = 60000;   // Auto-Refresh alle 60 Sek.
+const MATCH_DUR_MS  = 130*60000; // ~130 Min. max (inkl. Nachspielzeit/Pause)
 
-// Saison: Aug–Dez = lfd. Jahr, Jan–Jul = Vorjahr
 const NOW    = new Date();
 const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
 
 // ━━━ State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const S = {
-  league: 'frauen',
-  matches:[], mdays:{}, order:[], cur:1, sel:1,
-  table:null, view:'schedule'
+  league:'frauen', matches:[], mdays:{}, order:[], cur:1, sel:1,
+  table:null, view:'schedule', lastUpdate:null, pollTimer:null
 };
 
 // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const $ = id => document.getElementById(id);
-
 function leagueCfg() { return LEAGUES[S.league]; }
 
 async function api(path) {
@@ -240,10 +275,27 @@ function fmtDate(s) {
 
 function isLive(m) {
   if (m.matchIsFinished) return false;
-  const r = finalResult(m);
-  if (!r) return false;
   const ms = Date.now() - new Date(m.matchDateTime).getTime();
-  return ms > 0 && ms < 3*3600000;
+  if (ms < 0 || ms > MATCH_DUR_MS) return false;
+  // Has started (time has passed) — could have results or not yet
+  return true;
+}
+
+function getLiveMatches() {
+  return S.matches.filter(isLive);
+}
+
+function matchMinute(m) {
+  const ms = Date.now() - new Date(m.matchDateTime).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min <= 45) return min + "'";
+  if (min > 45 && min <= 60) return "HZ";
+  if (min > 60) return (min - 15) + "'";  // rough: subtract ~15 min halftime
+  return min + "'";
+}
+
+function fmtTime(d) {
+  return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
@@ -257,6 +309,47 @@ function groupByDay(matches) {
   }
   for (const v of Object.values(g)) v.matches.sort((a,b) => new Date(a.matchDateTime)-new Date(b.matchDateTime));
   return g;
+}
+
+// ━━━ Live Polling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function startPolling() {
+  stopPolling();
+  S.pollTimer = setInterval(() => refreshData(true), LIVE_POLL_MS);
+}
+
+function stopPolling() {
+  if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+}
+
+async function refreshData(silent) {
+  const lk = leagueCfg().key;
+  try {
+    const matches = await api(`/getmatchdata/${lk}/${SEASON}`);
+    S.matches = matches;
+    S.mdays   = groupByDay(matches);
+    S.order   = Object.keys(S.mdays).map(Number).sort((a,b)=>a-b);
+    S.lastUpdate = new Date();
+
+    updateLiveIndicator();
+
+    if (S.view === 'schedule') renderMatches();
+    if (S.view === 'live') renderLive();
+    if (S.view === 'table') { S.table = null; loadTable(); }
+  } catch(e) { if (!silent) throw e; }
+}
+
+// ━━━ Live Indicator ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function updateLiveIndicator() {
+  const live = getLiveMatches();
+  const btn = document.querySelector('.live-btn');
+  if (live.length > 0) {
+    btn.classList.add('has-live');
+    if (S.view !== 'live' && !S.pollTimer) startPolling();
+  } else {
+    btn.classList.remove('has-live');
+    if (S.view === 'live') switchView('schedule');
+    stopPolling();
+  }
 }
 
 // ━━━ Render: League Buttons ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -334,7 +427,12 @@ function matchRow(m) {
   } else if (li && r) {
     scoreD  = `<div class="score live">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
     scoreM1 = r.pointsTeam1; scoreM2 = r.pointsTeam2;
-    stHTML  = '<span class="st st-live">● Live</span>';
+    stHTML  = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`;
+    metaSt  = stHTML;
+  } else if (li) {
+    scoreD  = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
+    scoreM1 = '0'; scoreM2 = '0';
+    stHTML  = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`;
     metaSt  = stHTML;
   } else {
     scoreD  = `<div class="score upc">${d.tm} Uhr</div>`;
@@ -345,17 +443,67 @@ function matchRow(m) {
   return `<div class="match-row">
     <div class="m-mobile-meta"><span>${d.wd}. ${d.dd}</span>${metaSt}</div>
     <div class="m-time">${d.tm}</div>
-    <div class="team home">
-      <span class="team-name">${n1}</span>${i1}
-      <span class="team-score">${scoreM1}</span>
-    </div>
+    <div class="team home"><span class="team-name">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
-    <div class="team away">
-      ${i2}<span class="team-name">${n2}</span>
-      <span class="team-score">${scoreM2}</span>
-    </div>
+    <div class="team away">${i2}<span class="team-name">${n2}</span><span class="team-score">${scoreM2}</span></div>
     <div class="m-status">${stHTML}</div>
   </div>`;
+}
+
+// ━━━ Render: Live View ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderLive() {
+  const el = $('viewLive');
+  const live = getLiveMatches();
+
+  if (!live.length) {
+    el.innerHTML = `<div class="live-empty"><div class="ico">😴</div><p>Aktuell läuft kein Spiel.</p></div>`;
+    return;
+  }
+
+  const updTxt = S.lastUpdate ? fmtTime(S.lastUpdate) : '–';
+
+  let cards = '';
+  for (const m of live) {
+    const r  = finalResult(m);
+    const t1 = m.team1, t2 = m.team2;
+    const n1 = esc(t1.shortName||t1.teamName);
+    const n2 = esc(t2.shortName||t2.teamName);
+    const i1 = t1.teamIconUrl ? `<img class="team-icon" src="${t1.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
+    const i2 = t2.teamIconUrl ? `<img class="team-icon" src="${t2.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
+    const s1 = r ? r.pointsTeam1 : 0;
+    const s2 = r ? r.pointsTeam2 : 0;
+    const min = matchMinute(m);
+    const mdName = m.group ? esc(m.group.groupName) : '';
+
+    cards += `<div class="live-card">
+      <div class="live-card-body">
+        <div class="live-teams">
+          <div class="live-team-row">
+            <div class="live-team-info">${i1}<span class="live-team-name">${n1}</span></div>
+            <span class="live-team-score">${s1}</span>
+          </div>
+          <div class="live-team-row">
+            <div class="live-team-info">${i2}<span class="live-team-name">${n2}</span></div>
+            <span class="live-team-score">${s2}</span>
+          </div>
+        </div>
+      </div>
+      <div class="live-card-footer">
+        <span class="live-minute"><span class="live-dot"></span> ${min}</span>
+        <span class="live-matchday">${mdName}</span>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="live-header">
+      <h2><span class="live-dot"></span> ${live.length} Live-Spiel${live.length>1?'e':''}</h2>
+      <div class="live-meta">
+        <span class="auto-tag">Auto-Refresh</span>
+        <span>Aktualisiert: ${updTxt}</span>
+      </div>
+    </div>
+    <div class="live-grid">${cards}</div>`;
 }
 
 // ━━━ Render: Table ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -387,12 +535,19 @@ function renderTable() {
 
 // ━━━ View Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function switchView(v) {
+  // Prevent switching to live if no live matches
+  if (v === 'live' && getLiveMatches().length === 0) return;
+
   S.view = v;
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view===v));
   $('viewSchedule').classList.toggle('hidden', v!=='schedule');
   $('navMD').classList.toggle('hidden', v!=='schedule');
+  $('viewLive').classList.toggle('hidden', v!=='live');
   $('viewTable').classList.toggle('hidden', v!=='table');
+
   if (v==='table' && !S.table) loadTable();
+  if (v==='live') { renderLive(); startPolling(); }
+  if (v!=='live' && !getLiveMatches().length) stopPolling();
 }
 
 async function loadTable() {
@@ -409,9 +564,11 @@ function switchLeague(key) {
   if (S.league === key) return;
   S.league = key;
   S.table  = null;
+  stopPolling();
   renderLeagueSwitch();
-  // Persist preference
   try { localStorage.setItem('bl-league', key); } catch(e){}
+  // Reset to schedule view
+  switchView('schedule');
   init();
 }
 
@@ -444,7 +601,6 @@ async function init() {
   $('badgeSeason').textContent = SEASON+'/'+String(SEASON+1).slice(-2);
   renderLeagueSwitch();
 
-  // Reset schedule view
   $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>';
   $('tabsMD').innerHTML = '<span class="md-label">Spieltag</span>';
 
@@ -458,9 +614,18 @@ async function init() {
     S.order   = Object.keys(S.mdays).map(Number).sort((a,b)=>a-b);
     S.cur     = cg.groupOrderID;
     S.sel     = cg.groupOrderID;
+    S.lastUpdate = new Date();
+
     renderTabs();
     renderMatches();
-    // Reload table if we're on table view
+    updateLiveIndicator();
+
+    // Auto-switch to live view if matches are running
+    //const live = getLiveMatches();
+    //if (live.length > 0 && S.view === 'schedule') {
+    //  switchView('live');
+    //}
+
     if (S.view === 'table') { S.table=null; loadTable(); }
   } catch(e) {
     $('viewSchedule').innerHTML = `<div class="card"><div class="state-msg">
