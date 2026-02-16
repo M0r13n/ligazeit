@@ -51,13 +51,11 @@
       min-height: 100vh
     }
 
-    /* ── Accent Bar ── */
     .accent-bar {
       height: 4px;
       background: linear-gradient(90deg, var(--primary), #8b5cf6)
     }
 
-    /* ── Header ── */
     .header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -104,36 +102,35 @@
       flex-shrink: 0
     }
 
-    /* ── League Switcher ── */
-    .league-switch {
-      display: flex;
-      background: var(--bg);
-      border-radius: var(--rs);
-      padding: 3px
-    }
-
-    .league-btn {
-      padding: 6px 14px;
-      border: none;
-      background: 0 0;
-      border-radius: 4px;
-      cursor: pointer;
+    /* ── Liga-Dropdown ── */
+    .league-select {
       font-family: var(--font);
       font-size: 13px;
       font-weight: 500;
-      color: var(--text2);
-      transition: all .15s;
-      white-space: nowrap
+      color: var(--text);
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      padding: 6px 30px 6px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 12px;
+      transition: border-color .15s, box-shadow .15s;
     }
 
-    .league-btn:hover {
-      color: var(--text)
+    .league-select:hover {
+      border-color: var(--primary);
     }
 
-    .league-btn.active {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, .10)
+    .league-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-light);
     }
 
     /* ── View Toggle ── */
@@ -178,7 +175,6 @@
       gap: 5px
     }
 
-    /* ── Live Pulse ── */
     .live-dot {
       width: 8px;
       height: 8px;
@@ -202,7 +198,6 @@
       }
     }
 
-    /* ── Refresh ── */
     .refresh-btn {
       width: 34px;
       height: 34px;
@@ -234,7 +229,6 @@
       }
     }
 
-    /* ── Matchday Tabs ── */
     .matchday-nav {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -304,14 +298,12 @@
       color: var(--primary)
     }
 
-    /* ── Content ── */
     .content {
       max-width: 940px;
       margin: 20px auto;
       padding: 0 24px
     }
 
-    /* ── Card ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -349,7 +341,6 @@
       color: var(--text2)
     }
 
-    /* ── Date Separator ── */
     .date-sep {
       padding: 8px 20px;
       background: #fafbfc;
@@ -360,7 +351,6 @@
       letter-spacing: .2px
     }
 
-    /* ── Match Row ── */
     .match-row {
       display: grid;
       grid-template-columns: 56px 1fr 72px 1fr 84px;
@@ -490,7 +480,6 @@
       color: var(--red)
     }
 
-    /* ── Live View ── */
     .live-header {
       display: flex;
       align-items: center;
@@ -640,7 +629,6 @@
       font-size: 14px
     }
 
-    /* ── League Table ── */
     .lt {
       width: 100%;
       border-collapse: collapse
@@ -717,7 +705,6 @@
       color: var(--red)
     }
 
-    /* ── States ── */
     .state-msg {
       display: flex;
       flex-direction: column;
@@ -771,7 +758,6 @@
       background: var(--primary-hover)
     }
 
-    /* ── Footer ── */
     .footer {
       text-align: center;
       padding: 24px;
@@ -788,15 +774,12 @@
       text-decoration: underline
     }
 
-    /* ── Utility ── */
     .hidden {
       display: none !important
     }
 
     /* ── Mobile ── */
     @media(max-width:699px) {
-
-      /* Header: 2-row grid layout */
       .header {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -825,13 +808,15 @@
         grid-column: 1 / -1;
         grid-row: 2;
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
+        align-items: center;
         gap: 6px;
       }
 
-      .league-btn {
-        padding: 5px 10px;
-        font-size: 12px
+      .league-select {
+        font-size: 12px;
+        padding: 5px 26px 5px 10px;
       }
 
       .view-btn {
@@ -947,10 +932,17 @@
       <span class="badge" id="badgeSeason"></span>
     </div>
     <div class="header-controls">
-      <div class="league-switch" id="leagueSwitch">
-        <button class="league-btn" data-league="frauen">👩 Frauen</button>
-        <button class="league-btn" data-league="maenner">👨 Männer</button>
-      </div>
+      <select class="league-select" id="leagueSelect">
+        <optgroup label="Frauen">
+          <option value="frauen1">Frauen-Bundesliga</option>
+          <option value="frauen2">2. Frauen-Bundesliga</option>
+        </optgroup>
+        <optgroup label="Männer">
+          <option value="maenner1">Bundesliga</option>
+          <option value="maenner2">2. Bundesliga</option>
+          <option value="maenner3">3. Liga</option>
+        </optgroup>
+      </select>
       <div class="view-toggle" id="viewToggle">
         <button class="view-btn live-btn" data-view="live"><span class="live-dot"></span> Live</button>
         <button class="view-btn active" data-view="schedule">Spielplan</button>
@@ -982,8 +974,11 @@
   <script>
     // ━━━ Liga-Konfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const LEAGUES = {
-      frauen: { key: 'fbl1', label: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga' },
-      maenner: { key: 'bl1', label: 'Männer-Bundesliga', title: '⚽ Bundesliga' }
+      frauen1: { key: 'fbl1', label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
+      frauen2: { key: 'fbl2', label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
+      maenner1: { key: 'bl1', label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
+      maenner2: { key: 'bl2', label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
+      maenner3: { key: 'bl3', label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
     };
 
     const API = 'https://api.openligadb.de';
@@ -995,13 +990,14 @@
 
     // ━━━ State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const S = {
-      league: 'frauen', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
+      league: 'maenner1', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
       table: null, view: 'schedule', lastUpdate: null, pollTimer: null
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const $ = id => document.getElementById(id);
-    function leagueCfg() { return LEAGUES[S.league]; }
+
+    function leagueCfg() { return LEAGUES[S.league] || LEAGUES.maenner1; }
 
     async function api(path) {
       const r = await fetch(API + path);
@@ -1086,9 +1082,9 @@
       }
     }
 
-    // ━━━ Render: League Buttons ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━ Render: League Select ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function renderLeagueSwitch() {
-      document.querySelectorAll('.league-btn').forEach(b => b.classList.toggle('active', b.dataset.league === S.league));
+      $('leagueSelect').value = S.league;
       $('pageTitle').textContent = leagueCfg().title;
     }
 
@@ -1217,7 +1213,7 @@
       <td class="c">${t.goals}:${t.opponentGoals}</td><td class="diff ${dc}">${ds}</td><td class="pts">${t.points}</td></tr>`;
       }).join('');
       el.innerHTML = `<div class="card">
-    <div class="card-header"><h2>Tabelle – ${esc(leagueCfg().label)}</h2><span class="pill pill-muted">Saison ${SEASON}/${String(SEASON + 1).slice(-2)}</span></div>
+    <div class="card-header"><h2>Tabelle – ${esc(leagueCfg().fullLabel)}</h2><span class="pill pill-muted">Saison ${SEASON}/${String(SEASON + 1).slice(-2)}</span></div>
     <div style="overflow-x:auto"><table class="lt"><thead><tr>
       <th class="c">#</th><th>Verein</th><th class="c">Sp</th><th class="c">S</th><th class="c">U</th><th class="c">N</th><th class="c">Tore</th><th class="c">Diff</th><th class="c">Pkt</th>
     </tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -1261,14 +1257,16 @@
       S.sel = parseInt(t.dataset.md);
       renderTabs(); renderMatches();
     });
+
     $('viewToggle').addEventListener('click', e => {
       const b = e.target.closest('.view-btn');
       if (b) switchView(b.dataset.view);
     });
-    $('leagueSwitch').addEventListener('click', e => {
-      const b = e.target.closest('.league-btn');
-      if (b) switchLeague(b.dataset.league);
+
+    $('leagueSelect').addEventListener('change', e => {
+      switchLeague(e.target.value);
     });
+
     $('btnRefresh').addEventListener('click', () => { S.table = null; init(); });
 
     // ━━━ Init ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1299,7 +1297,15 @@
       } finally { rb.classList.remove('spin'); }
     }
 
-    try { const saved = localStorage.getItem('bl-league'); if (saved && LEAGUES[saved]) S.league = saved; } catch (e) { }
+    // ━━━ localStorage: Alte Keys migrieren + laden ━━━━━━━━
+    try {
+      const saved = localStorage.getItem('bl-league');
+      if (saved === 'frauen') localStorage.setItem('bl-league', 'frauen1');
+      if (saved === 'maenner') localStorage.setItem('bl-league', 'maenner1');
+      const current = localStorage.getItem('bl-league');
+      if (current && LEAGUES[current]) S.league = current;
+    } catch (e) { }
+
     init();
   </script>
 </body>
