@@ -1079,8 +1079,9 @@
 
       .m-mobile-meta {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: center;
+        gap: 6px;
         font-size: 12px;
         color: var(--text2)
       }
@@ -1523,7 +1524,7 @@
       } else {
         scoreD = `<div class="score upc">${d.tm} Uhr</div>`;
         stHTML = `<span class="st st-upc">${d.wd}. ${d.dd}</span>`;
-        metaSt = `<span class="st st-upc">${d.tm} Uhr</span>`;
+        metaSt = '';
       }
       // Nur begonnene Spiele haben einen Spielverlauf zum Aufklappen.
       const id = Number(m.matchID);
@@ -1534,7 +1535,7 @@
         ? ` expandable${open ? ' open' : ''}" role="button" tabindex="0" data-mid="${id}" aria-expanded="${open}" aria-controls="goals-${id}" aria-label="Spielverlauf ${n1} gegen ${n2}`
         : '';
       return `<div class="match-row${attrs}">
-    <div class="m-mobile-meta"><span>${d.wd}. ${d.dd}</span><span class="m-meta-st">${metaSt}${chev}</span></div>
+    <div class="m-mobile-meta"><span>${d.tm} Uhr</span><span class="m-meta-st">${metaSt}${chev}</span></div>
     <div class="m-time">${d.tm}</div>
     <div class="team home"><span class="team-name">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
