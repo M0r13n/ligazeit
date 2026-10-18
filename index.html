@@ -973,12 +973,15 @@
 
   <script>
     // ━━━ Liga-Konfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // OpenLigaDB-Shortcuts werden pro Saison von der Community angelegt und
+    // können sich ändern (Frauen 2026/27: ffb1/ffb2 statt fbl1/fbl2).
+    // Es wird der erste Shortcut verwendet, der Spiele liefert.
     const LEAGUES = {
-      frauen1: { key: 'fbl1', label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
-      frauen2: { key: 'fbl2', label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
-      maenner1: { key: 'bl1', label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
-      maenner2: { key: 'bl2', label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
-      maenner3: { key: 'bl3', label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+      frauen1: { keys: ['ffb1', 'fbl1'], label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
+      frauen2: { keys: ['ffb2', 'fbl2'], label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
+      maenner1: { keys: ['bl1'], label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
+      maenner2: { keys: ['bl2'], label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
+      maenner3: { keys: ['bl3'], label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
     };
 
     const API = 'https://api.openligadb.de';
@@ -991,18 +994,47 @@
     // ━━━ State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const S = {
       league: 'maenner1', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
-      table: null, view: 'schedule', lastUpdate: null, pollTimer: null
+      table: null, view: 'schedule', lastUpdate: null, pollTimer: null,
+      keyCache: {}
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const $ = id => document.getElementById(id);
 
     function leagueCfg() { return LEAGUES[S.league] || LEAGUES.maenner1; }
+    function leagueKey() { return S.keyCache[S.league] || leagueCfg().keys[0]; }
 
     async function api(path) {
       const r = await fetch(API + path);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
+    }
+
+    // Lädt die Spiele der Saison und merkt sich den funktionierenden Shortcut.
+    async function loadMatches() {
+      const keys = S.keyCache[S.league] ? [S.keyCache[S.league]] : leagueCfg().keys;
+      let lastErr = null;
+      for (const key of keys) {
+        try {
+          const matches = await api(`/getmatchdata/${key}/${SEASON}`);
+          if (Array.isArray(matches) && matches.length) {
+            S.keyCache[S.league] = key;
+            return matches;
+          }
+        } catch (e) { lastErr = e; }
+      }
+      if (lastErr) throw lastErr;
+      return [];
+    }
+
+    // Aktueller Spieltag: API bevorzugen, sonst aus den Spielen ableiten.
+    async function loadCurrentGroup(order) {
+      try {
+        const cg = await api(`/getcurrentgroup/${leagueKey()}`);
+        if (cg && order.includes(cg.groupOrderID)) return cg.groupOrderID;
+      } catch (e) { }
+      const open = order.find(n => S.mdays[n].matches.some(m => !m.matchIsFinished));
+      return open ?? order[order.length - 1] ?? 1;
     }
 
     function finalResult(m) {
@@ -1037,6 +1069,90 @@
     }
 
     function fmtTime(d) { return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    // ━━━ Team-Icons ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // OpenLigaDB liefert teils tote Links. Reihenfolge beim Laden:
+    // Override → API-URL → Icon desselben Vereins aus den Männer-Ligen
+    // → Wikimedia Special:FilePath → ausblenden.
+
+    // Bekannte tote Links; Schlüssel ist die URL, wie die API sie liefert.
+    // Leverkusen: die de-Datei ist weg, en.wikipedia führt das Wappen weiter.
+    const ICON_OVERRIDES = {
+      'https://upload.wikimedia.org/wikipedia/de/f/f7/Bayer_Leverkusen_Logo.svg':
+        'https://upload.wikimedia.org/wikipedia/en/5/59/Bayer_04_Leverkusen_logo.svg',
+    };
+
+    const MEN_KEYS = ['bl1', 'bl2', 'bl3'];
+
+    // Vereinsname → Vergleichsschlüssel, z. B. „Bayer 04 Leverkusen Frauen“
+    // und „Bayer 04 Leverkusen“ → „leverkusen“.
+    const CLUB_PREFIX = /^(fc|vfl|vfb|sv|sc|tsg|tsv|fsv|rb|sgs|spvgg|bv|bsc|ssv|msv|sg|vfr|fk|tus|sk|ac|as|cf|bayer|borussia|eintracht|union|arminia|fortuna|alemannia|hansa|dynamo|rot|weiss|weiß|preußen|kickers|holstein|energie|viktoria|turbine|frauen|women|ii|u23)$/i;
+    function clubKey(name) {
+      return (name || '').toLowerCase().split(/[^\p{L}\p{N}]+/u)
+        .filter(w => w && !CLUB_PREFIX.test(w) && !/^\d+$/.test(w)).join(' ');
+    }
+
+    // Wird erst beim ersten fehlgeschlagenen Icon geladen, dann gecacht.
+    let menIconsPromise = null;
+    function menIcons() {
+      if (!menIconsPromise) {
+        menIconsPromise = Promise.all(MEN_KEYS.map(k =>
+          api(`/getavailableteams/${k}/${SEASON}`).catch(() => [])
+        )).then(lists => {
+          const map = {};
+          for (const t of lists.flat()) {
+            const k = clubKey(t.teamName);
+            if (k && t.teamIconUrl && !map[k]) map[k] = ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl;
+          }
+          return map;
+        });
+      }
+      return menIconsPromise;
+    }
+
+    // Ersatz-URL für Wikimedia-Uploads: Special:FilePath folgt Umbenennungen
+    // und Verschiebungen nach Commons, der Hash-Pfad der API dagegen nicht.
+    function wikiFilePath(url) {
+      const m = /^https?:\/\/upload\.wikimedia\.org\/wikipedia\/([^/]+)\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/.exec(url || '');
+      if (!m) return null;
+      const host = m[1] === 'commons' ? 'commons.wikimedia.org' : `${m[1]}.wikipedia.org`;
+      return `https://${host}/wiki/Special:FilePath/${m[2]}`;
+    }
+
+    function teamIcon(t) {
+      const orig = t.teamIconUrl || '';
+      const first = ICON_OVERRIDES[orig] || orig;
+      const attrs = `data-orig="${esc(orig)}" data-club="${esc(clubKey(t.teamName))}"`;
+      if (!first) {
+        // Kein Icon von der API: gleich beim Männerteam nachsehen.
+        return `<img class="team-icon" alt="" ${attrs} data-stage="0" style="visibility:hidden" src="data:," onerror="iconFail(this)">`;
+      }
+      return `<img class="team-icon" src="${esc(first)}" alt="" loading="lazy" ${attrs} data-stage="0" onerror="iconFail(this)">`;
+    }
+
+    async function iconFail(img) {
+      const d = img.dataset;
+      const tried = new Set((d.tried || '').split(' ').filter(Boolean));
+      tried.add(img.getAttribute('src'));
+      const next = async stage => {
+        if (stage === 1) return d.orig;
+        if (stage === 2) return d.club ? (await menIcons())[d.club] : null;
+        if (stage === 3) return wikiFilePath(d.orig);
+        return undefined;
+      };
+      for (let stage = Number(d.stage) + 1; stage <= 3; stage++) {
+        const url = await next(stage);
+        if (url && !tried.has(url)) {
+          d.stage = stage;
+          d.tried = [...tried].join(' ');
+          img.style.visibility = '';
+          img.src = url;
+          return;
+        }
+      }
+      d.stage = 4;
+      img.style.visibility = 'hidden';
+    }
+
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     function groupByDay(matches) {
@@ -1056,7 +1172,7 @@
 
     async function refreshData(silent) {
       try {
-        const matches = await api(`/getmatchdata/${leagueCfg().key}/${SEASON}`);
+        const matches = await loadMatches();
         S.matches = matches;
         S.mdays = groupByDay(matches);
         S.order = Object.keys(S.mdays).map(Number).sort((a, b) => a - b);
@@ -1136,8 +1252,8 @@
       const li = isLive(m);
       const t1 = m.team1, t2 = m.team2;
       const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
-      const i1 = t1.teamIconUrl ? `<img class="team-icon" src="${t1.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
-      const i2 = t2.teamIconUrl ? `<img class="team-icon" src="${t2.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
+      const i1 = teamIcon(t1);
+      const i2 = teamIcon(t2);
       let scoreD, scoreM1 = '', scoreM2 = '', stHTML, metaSt;
       if (m.matchIsFinished && r) {
         scoreD = `<div class="score fin">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
@@ -1179,8 +1295,8 @@
         const r = finalResult(m);
         const t1 = m.team1, t2 = m.team2;
         const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
-        const i1 = t1.teamIconUrl ? `<img class="team-icon" src="${t1.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
-        const i2 = t2.teamIconUrl ? `<img class="team-icon" src="${t2.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
+        const i1 = teamIcon(t1);
+        const i2 = teamIcon(t2);
         const s1 = r ? r.pointsTeam1 : 0, s2 = r ? r.pointsTeam2 : 0;
         const min = matchMinute(m);
         const mdName = m.group ? esc(m.group.groupName) : '';
@@ -1205,7 +1321,7 @@
         return;
       }
       const rows = S.table.map((t, i) => {
-        const ic = t.teamIconUrl ? `<img class="team-icon" src="${t.teamIconUrl}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
+        const ic = teamIcon(t);
         const nm = esc(t.shortName || t.teamName);
         const df = t.goalDiff, dc = df > 0 ? 'pos' : df < 0 ? 'neg' : '', ds = df > 0 ? '+' + df : df;
         return `<tr><td class="rk">${i + 1}</td><td><div class="tc">${ic}<span>${nm}</span></div></td>
@@ -1234,7 +1350,7 @@
     }
 
     async function loadTable() {
-      try { S.table = await api(`/getbltable/${leagueCfg().key}/${SEASON}`); renderTable(); }
+      try { S.table = await api(`/getbltable/${leagueKey()}/${SEASON}`); renderTable(); }
       catch (e) {
         $('viewTable').innerHTML = `<div class="card"><div class="state-msg"><div class="ico">⚠️</div><h3>Fehler</h3><p>${esc(e.message)}</p>
       <button class="btn-retry" onclick="loadTable()">Erneut versuchen</button></div></div>`;
@@ -1277,14 +1393,12 @@
       $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>';
       $('tabsMD').innerHTML = '<span class="md-label">Spieltag</span>';
       try {
-        const [matches, cg] = await Promise.all([
-          api(`/getmatchdata/${leagueCfg().key}/${SEASON}`),
-          api(`/getcurrentgroup/${leagueCfg().key}`)
-        ]);
+        const matches = await loadMatches();
         S.matches = matches;
         S.mdays = groupByDay(matches);
         S.order = Object.keys(S.mdays).map(Number).sort((a, b) => a - b);
-        S.cur = cg.groupOrderID; S.sel = cg.groupOrderID;
+        const cur = await loadCurrentGroup(S.order);
+        S.cur = cur; S.sel = cur;
         S.lastUpdate = new Date();
         renderTabs(); renderMatches(); updateLiveIndicator();
         if (S.view === 'table') { S.table = null; loadTable(); }
