@@ -1,0 +1,37 @@
+# Meldet Frauen-Spiele ohne Ergebnis bei OpenLigaDB als Issue in diesem Repo.
+# Liest nur öffentliche APIs; schreibt ausschließlich Issues in diesem Repo.
+
+name: Fehlende Ergebnisse prüfen
+
+on:
+  schedule:
+    - cron: "30 6 * * *"      # täglich 06:30 UTC (Nachzügler)
+    - cron: "0 20 * * 5,6,0"  # Fr/Sa/So 20:00 UTC (nach den Spielen)
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: missing-results
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Frauen-Ergebnisse abgleichen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # do not store any tokens
+          sparse-checkout: .github/scripts
+          fetch-depth: 1
+
+      - name: Prüfen und Issue aktualisieren
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        # -I: isoliert (keine Umgebungsvariablen/User-site), -S: kein site-Import
+        run: python3 -I -S .github/scripts/check_missing_results.py
