@@ -451,7 +451,123 @@
     }
 
     .m-status {
-      text-align: right
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px
+    }
+
+    .m-meta-st {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    /* Aufklappbare Spiele: Spielverlauf (Tore) */
+    .match-row.expandable {
+      cursor: pointer
+    }
+
+    .match-row.expandable:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px
+    }
+
+    .match-row.open {
+      background: #fafbfc;
+      border-bottom-color: transparent
+    }
+
+    .chev {
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-right: 1.5px solid var(--text3);
+      border-bottom: 1.5px solid var(--text3);
+      transform: translateY(-2px) rotate(45deg);
+      transition: transform .15s
+    }
+
+    .match-row.open .chev {
+      transform: translateY(1px) rotate(-135deg)
+    }
+
+    .goals {
+      padding: 2px 20px 12px 84px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border-light)
+    }
+
+    .goals:last-child {
+      border-bottom: none
+    }
+
+    .goals table {
+      width: 100%;
+      max-width: 420px;
+      border-collapse: collapse;
+      font-size: 13px
+    }
+
+    .goals th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text3);
+      padding: 4px 8px 4px 0
+    }
+
+    .goals td {
+      padding: 5px 8px 5px 0;
+      border-top: 1px solid var(--border-light);
+      color: var(--text)
+    }
+
+    .goals .g-score {
+      width: 64px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text3);
+      white-space: nowrap
+    }
+
+    .goals .g-score b {
+      color: var(--text);
+      font-weight: 700
+    }
+
+    .goals .g-min {
+      width: 48px;
+      text-align: right;
+      padding-right: 0;
+      font-variant-numeric: tabular-nums;
+      color: var(--text2)
+    }
+
+    .goals th.g-min {
+      padding-right: 0
+    }
+
+    .goals .g-note {
+      color: var(--text3);
+      font-size: 12px;
+      margin-left: 4px
+    }
+
+    .goals .g-empty {
+      font-size: 13px;
+      color: var(--text2);
+      padding-top: 6px
+    }
+
+    .goals .g-empty + table,
+    table + .g-empty {
+      margin-top: 6px
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .chev {
+        transition: none
+      }
     }
 
     .st {
@@ -858,6 +974,10 @@
         display: none
       }
 
+      .goals {
+        padding: 0 16px 12px
+      }
+
       .m-mobile-meta {
         display: flex;
         justify-content: space-between;
@@ -995,7 +1115,8 @@
     const S = {
       league: 'maenner1', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
       table: null, view: 'schedule', lastUpdate: null, pollTimer: null,
-      keyCache: {}
+      keyCache: {},
+      openMatches: new Set()   // IDs aufgeklappter Spiele, überlebt Neu-Rendern
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1098,10 +1219,11 @@
         menIconsPromise = Promise.all(MEN_KEYS.map(k =>
           api(`/getavailableteams/${k}/${SEASON}`).catch(() => [])
         )).then(lists => {
-          const map = {};
+          const map = Object.create(null);
           for (const t of lists.flat()) {
             const k = clubKey(t.teamName);
-            if (k && t.teamIconUrl && !map[k]) map[k] = ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl;
+            const u = safeUrl(ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl);
+            if (k && u && !map[k]) map[k] = u;
           }
           return map;
         });
@@ -1119,7 +1241,7 @@
     }
 
     function teamIcon(t) {
-      const orig = t.teamIconUrl || '';
+      const orig = safeUrl(t.teamIconUrl);
       const first = ICON_OVERRIDES[orig] || orig;
       const attrs = `data-orig="${esc(orig)}" data-club="${esc(clubKey(t.teamName))}"`;
       if (!first) {
@@ -1140,7 +1262,7 @@
         return undefined;
       };
       for (let stage = Number(d.stage) + 1; stage <= 3; stage++) {
-        const url = await next(stage);
+        const url = safeUrl(await next(stage));
         if (url && !tried.has(url)) {
           d.stage = stage;
           d.tried = [...tried].join(' ');
@@ -1153,7 +1275,23 @@
       img.style.visibility = 'hidden';
     }
 
-    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    // Maskiert für Text UND Attribute (inkl. " und '). API-Daten sind
+    // Community-Daten und gelten als nicht vertrauenswürdig.
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    // Zahlen aus der API nie ungeprüft ins HTML: nur ganze Zahlen, sonst –.
+    function num(v) {
+      const n = Number(v);
+      return Number.isInteger(n) ? String(n) : '–';
+    }
+
+    // Icon-URLs nur über HTTPS (kein javascript:, data:, http: usw.).
+    function safeUrl(u) {
+      try { const x = new URL(String(u)); return x.protocol === 'https:' ? x.href : ''; }
+      catch (e) { return ''; }
+    }
 
     function groupByDay(matches) {
       const g = {};
@@ -1256,12 +1394,12 @@
       const i2 = teamIcon(t2);
       let scoreD, scoreM1 = '', scoreM2 = '', stHTML, metaSt;
       if (m.matchIsFinished && r) {
-        scoreD = `<div class="score fin">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
-        scoreM1 = r.pointsTeam1; scoreM2 = r.pointsTeam2;
+        scoreD = `<div class="score fin">${num(r.pointsTeam1)} <span class="score-sep">:</span> ${num(r.pointsTeam2)}</div>`;
+        scoreM1 = num(r.pointsTeam1); scoreM2 = num(r.pointsTeam2);
         stHTML = '<span class="st st-fin">Beendet</span>'; metaSt = stHTML;
       } else if (li && r) {
-        scoreD = `<div class="score live">${r.pointsTeam1} <span class="score-sep">:</span> ${r.pointsTeam2}</div>`;
-        scoreM1 = r.pointsTeam1; scoreM2 = r.pointsTeam2;
+        scoreD = `<div class="score live">${num(r.pointsTeam1)} <span class="score-sep">:</span> ${num(r.pointsTeam2)}</div>`;
+        scoreM1 = num(r.pointsTeam1); scoreM2 = num(r.pointsTeam2);
         stHTML = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`; metaSt = stHTML;
       } else if (li) {
         scoreD = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
@@ -1272,13 +1410,78 @@
         stHTML = `<span class="st st-upc">${d.wd}. ${d.dd}</span>`;
         metaSt = `<span class="st st-upc">${d.tm} Uhr</span>`;
       }
-      return `<div class="match-row">
-    <div class="m-mobile-meta"><span>${d.wd}. ${d.dd}</span>${metaSt}</div>
+      // Nur begonnene Spiele haben einen Spielverlauf zum Aufklappen.
+      const id = Number(m.matchID);
+      const canOpen = Number.isInteger(id) && (m.matchIsFinished || li || !!r);
+      const open = canOpen && S.openMatches.has(id);
+      const chev = canOpen ? '<span class="chev" aria-hidden="true"></span>' : '';
+      const attrs = canOpen
+        ? ` expandable${open ? ' open' : ''}" role="button" tabindex="0" data-mid="${id}" aria-expanded="${open}" aria-controls="goals-${id}" aria-label="Spielverlauf ${n1} gegen ${n2}`
+        : '';
+      return `<div class="match-row${attrs}">
+    <div class="m-mobile-meta"><span>${d.wd}. ${d.dd}</span><span class="m-meta-st">${metaSt}${chev}</span></div>
     <div class="m-time">${d.tm}</div>
     <div class="team home"><span class="team-name">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
     <div class="team away">${i2}<span class="team-name">${n2}</span><span class="team-score">${scoreM2}</span></div>
-    <div class="m-status">${stHTML}</div></div>`;
+    <div class="m-status">${stHTML}${chev}</div></div>${open ? goalsBlock(m) : ''}`;
+    }
+
+    // ━━━ Spielverlauf: Tore mit Zwischenstand, Torschützin/Torschütze, Minute ━━
+    function goalsBlock(m) {
+      const id = Number(m.matchID);
+      const r = finalResult(m);
+      const total = r ? (Number(r.pointsTeam1) || 0) + (Number(r.pointsTeam2) || 0) : 0;
+      const goals = (Array.isArray(m.goals) ? m.goals : [])
+        .filter(g => g && Number.isFinite(Number(g.scoreTeam1)) && Number.isFinite(Number(g.scoreTeam2)))
+        .map(g => ({
+          s1: Number(g.scoreTeam1), s2: Number(g.scoreTeam2),
+          min: Number.isFinite(Number(g.matchMinute)) && g.matchMinute !== null ? Number(g.matchMinute) : null,
+          name: String(g.goalGetterName || '').trim(),
+          pen: g.isPenalty === true, og: g.isOwnGoal === true, et: g.isOvertime === true
+        }))
+        .sort((a, b) => (a.s1 + a.s2) - (b.s1 + b.s2) || (a.min ?? 999) - (b.min ?? 999));
+
+      const scorerLabel = leagueCfg().gender === 'frauen' ? 'Torschützin' : 'Torschütze';
+      let html = '';
+      if (goals.length) {
+        let p1 = 0, p2 = 0;
+        const rows = goals.map(g => {
+          // Die Zahl des Teams, das getroffen hat, wird hervorgehoben.
+          const a = g.s1 > p1 ? `<b>${g.s1}</b>` : `${g.s1}`;
+          const b = g.s2 > p2 ? `<b>${g.s2}</b>` : `${g.s2}`;
+          p1 = g.s1; p2 = g.s2;
+          const note = g.og ? 'Eigentor' : g.pen ? 'Elfmeter' : '';
+          const min = g.min === null ? '–' : `${g.min}'${g.et ? ' n. V.' : ''}`;
+          return `<tr><td class="g-score">${a}:${b}</td>`
+            + `<td>${esc(g.name || 'unbekannt')}${note ? `<span class="g-note">${note}</span>` : ''}</td>`
+            + `<td class="g-min">${min}</td></tr>`;
+        }).join('');
+        html += `<table><thead><tr><th class="g-score">Ergebnis</th><th>${scorerLabel}</th><th class="g-min">Minute</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      if (!goals.length) {
+        html += total === 0 && m.matchIsFinished
+          ? '<div class="g-empty">Keine Tore.</div>'
+          : total === 0
+            ? '<div class="g-empty">Noch keine Tore.</div>'
+            : '<div class="g-empty">Für dieses Spiel sind keine Torschützen eingetragen.</div>';
+      } else if (goals.length < total) {
+        html += '<div class="g-empty">Nicht alle Tore sind eingetragen.</div>';
+      }
+      return `<div class="goals" id="goals-${id}">${html}</div>`;
+    }
+
+    function toggleMatch(row) {
+      const id = Number(row.dataset.mid);
+      const m = S.matches.find(x => Number(x.matchID) === id);
+      if (!m) return;
+      const open = !S.openMatches.has(id);
+      if (open) S.openMatches.add(id); else S.openMatches.delete(id);
+      row.classList.toggle('open', open);
+      row.setAttribute('aria-expanded', String(open));
+      const next = row.nextElementSibling;
+      if (next && next.classList.contains('goals')) next.remove();
+      if (open) row.insertAdjacentHTML('afterend', goalsBlock(m));
     }
 
     // ━━━ Render: Live View ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1297,7 +1500,7 @@
         const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
         const i1 = teamIcon(t1);
         const i2 = teamIcon(t2);
-        const s1 = r ? r.pointsTeam1 : 0, s2 = r ? r.pointsTeam2 : 0;
+        const s1 = r ? num(r.pointsTeam1) : '0', s2 = r ? num(r.pointsTeam2) : '0';
         const min = matchMinute(m);
         const mdName = m.group ? esc(m.group.groupName) : '';
         cards += `<div class="live-card"><div class="live-card-body"><div class="live-teams">
@@ -1323,10 +1526,10 @@
       const rows = S.table.map((t, i) => {
         const ic = teamIcon(t);
         const nm = esc(t.shortName || t.teamName);
-        const df = t.goalDiff, dc = df > 0 ? 'pos' : df < 0 ? 'neg' : '', ds = df > 0 ? '+' + df : df;
+        const df = Number(t.goalDiff), dc = df > 0 ? 'pos' : df < 0 ? 'neg' : '', ds = df > 0 ? '+' + num(df) : num(df);
         return `<tr><td class="rk">${i + 1}</td><td><div class="tc">${ic}<span>${nm}</span></div></td>
-      <td class="c">${t.matches}</td><td class="c">${t.won}</td><td class="c">${t.draw}</td><td class="c">${t.lost}</td>
-      <td class="c">${t.goals}:${t.opponentGoals}</td><td class="diff ${dc}">${ds}</td><td class="pts">${t.points}</td></tr>`;
+      <td class="c">${num(t.matches)}</td><td class="c">${num(t.won)}</td><td class="c">${num(t.draw)}</td><td class="c">${num(t.lost)}</td>
+      <td class="c">${num(t.goals)}:${num(t.opponentGoals)}</td><td class="diff ${dc}">${ds}</td><td class="pts">${num(t.points)}</td></tr>`;
       }).join('');
       el.innerHTML = `<div class="card">
     <div class="card-header"><h2>Tabelle – ${esc(leagueCfg().fullLabel)}</h2><span class="pill pill-muted">Saison ${SEASON}/${String(SEASON + 1).slice(-2)}</span></div>
@@ -1360,7 +1563,7 @@
     // ━━━ League Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function switchLeague(key) {
       if (S.league === key) return;
-      S.league = key; S.table = null; stopPolling();
+      S.league = key; S.table = null; S.openMatches.clear(); stopPolling();
       renderLeagueSwitch();
       try { localStorage.setItem('bl-league', key); } catch (e) { }
       switchView('schedule'); init();
@@ -1384,6 +1587,19 @@
     });
 
     $('btnRefresh').addEventListener('click', () => { S.table = null; init(); });
+
+    $('viewSchedule').addEventListener('click', e => {
+      const row = e.target.closest('.match-row.expandable');
+      if (row) toggleMatch(row);
+    });
+
+    $('viewSchedule').addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('.match-row.expandable');
+      if (!row || row !== e.target) return;
+      e.preventDefault();
+      toggleMatch(row);
+    });
 
     // ━━━ Init ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     async function init() {
