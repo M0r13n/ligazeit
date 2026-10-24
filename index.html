@@ -1186,14 +1186,14 @@
           <option value="wsl">Women's Super League</option>
           <option value="premiereligue">Première Ligue</option>
           <option value="uwcl">Champions League</option>
-          <option value="natf">Nationalmannschaft</option>
+          <option value="natf">Nationalmannschaft Frauen</option>
         </optgroup>
         <optgroup label="Männer">
           <option value="maenner1">Bundesliga</option>
           <option value="maenner2">2. Bundesliga</option>
           <option value="maenner3">3. Liga</option>
           <option value="ucl">Champions League</option>
-          <option value="natm">Nationalmannschaft</option>
+          <option value="natm">Nationalmannschaft Männer</option>
         </optgroup>
         <optgroup label="Handball">
           <option value="handball1">Handball-Bundesliga</option>
@@ -1456,7 +1456,9 @@
         seen.add(e.idEvent);
         const m = tsdbMatch(e, 1);
         if (!m) continue;
-        const r = m.matchIsFinished || m.matchIsOff && Date.parse(m.matchDateTime) < Date.now() ? 1 : 2;
+        // Nach Datum einsortieren: TheSportsDB führt Spiele ohne eingetragenes
+        // Ergebnis teils monatelang als "nächste Spiele".
+        const r = m.matchIsFinished || Date.parse(m.matchDateTime) + matchDurMs() < Date.now() ? 1 : 2;
         m.group = { groupOrderID: r, groupName: TEAM_ROUNDS[r].long };
         out.push(m);
       }
@@ -1752,6 +1754,12 @@
 
     function getLiveMatches() { return S.matches.filter(isLive); }
 
+    // Anstoß ist lange vorbei, aber die Quelle hat nie ein Ergebnis eingetragen.
+    function isStale(m) {
+      return !m.matchIsFinished && !m.matchIsOff && !isLive(m)
+        && Date.now() > Date.parse(m.matchDateTime) + matchDurMs();
+    }
+
     function matchMinute(m) {
       if (m.liveStatus === 'ht') return 'HZ';
       if (m.liveMinute) return m.liveMinute + "'";
@@ -1901,7 +1909,7 @@
       if (src() === 'thesportsdb') matches.forEach(m => { applyLive(m); applyGoalCache(m); });
       S.matches = matches;
       S.mdays = groupByDay(matches);
-      const n = src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
+      const n = leagueCfg().team ? 2 : src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
       const all = new Set(Object.keys(S.mdays).map(Number));
       for (let i = 1; i <= n; i++) all.add(i);
       S.order = [...all].sort((a, b) => roundOrder(a) - roundOrder(b));
@@ -2008,8 +2016,10 @@
       const el = $('viewSchedule');
       const md = S.mdays[S.sel];
       if (!md || !md.matches.length) {
-        const what = leagueCfg().team ? 'Derzeit' : leagueCfg().cup ? 'Für diese Runde' : 'Für diesen Spieltag';
-        el.innerHTML = `<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Spiele</h3><p>${what} liegen keine Daten vor.</p></div></div>`;
+        const msg = leagueCfg().team
+          ? (S.sel === 2 ? 'Bei TheSportsDB ist derzeit kein kommendes Spiel eingetragen.' : 'Derzeit liegen keine Daten vor.')
+          : `${leagueCfg().cup ? 'Für diese Runde' : 'Für diesen Spieltag'} liegen keine Daten vor.`;
+        el.innerHTML = `<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Spiele</h3><p>${msg}</p></div></div>`;
         return;
       }
       const fin = md.matches.filter(m => m.matchIsFinished).length;
@@ -2051,6 +2061,10 @@
         scoreD = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
         scoreM1 = '0'; scoreM2 = '0';
         stHTML = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`; metaSt = stHTML;
+      } else if (isStale(m)) {
+        scoreD = `<div class="score upc">–</div>`;
+        stHTML = '<span class="st st-upc">Ergebnis fehlt</span>';
+        metaSt = stHTML;
       } else if (m.matchIsOff) {
         scoreD = `<div class="score upc">–</div>`;
         stHTML = `<span class="st st-upc">${esc(m.offLabel)}</span>`;
@@ -2062,7 +2076,7 @@
       }
       // Nur begonnene Spiele haben einen Spielverlauf zum Aufklappen.
       const id = Number(m.matchID);
-      const canOpen = sportCfg().goalDetails && Number.isInteger(id) && (m.matchIsFinished || li || !!r);
+      const canOpen = sportCfg().goalDetails && !isStale(m) && Number.isInteger(id) && (m.matchIsFinished || li || !!r);
       const open = canOpen && S.openMatches.has(id);
       const chev = canOpen ? '<span class="chev" aria-hidden="true"></span>' : '';
       const attrs = canOpen
