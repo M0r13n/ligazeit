@@ -1,0 +1,104 @@
+# {{ ansible_managed }}
+
+proxy_cache_path /var/cache/nginx/tsdb levels=1:2 keys_zone=tsdb:10m max_size=100m inactive=10m use_temp_path=off;
+limit_req_zone $binary_remote_addr zone=tsdb_perip:10m rate=5r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ api_domain }};
+
+    # Datenschutz: keine Zugriffe protokollieren, Fehler nur ab "crit"
+    # (darunter stünden Client-IPs im Fehlerlog)
+    access_log off;
+    error_log /var/log/nginx/error.log {{ nginx_error_log_level }};
+
+    # Let's-Encrypt-Challenge (Ausstellung und Verlängerung)
+    location ^~ /.well-known/acme-challenge/ {
+        root {{ acme_root }};
+        default_type text/plain;
+    }
+
+    location / {
+{% if tls_enabled %}
+        return 301 https://$host$request_uri;
+{% else %}
+        return 404;
+{% endif %}
+    }
+}
+{% if tls_enabled %}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name {{ api_domain }};
+
+    access_log off;
+    error_log /var/log/nginx/error.log {{ nginx_error_log_level }};
+
+    ssl_certificate     {{ cert_dir }}/fullchain.pem;
+    ssl_certificate_key {{ cert_dir }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    include /etc/nginx/tsdb-key.conf;      # setzt $tsdb_key
+    resolver 1.1.1.1 9.9.9.9 valid=300s;   # nötig, weil proxy_pass Variablen nutzt
+
+    # Verbindung zu TheSportsDB: Zertifikat prüfen, der Key geht dorthin
+    proxy_http_version 1.1;
+
+    # Nichts vom Browser weiterreichen (User-Agent, Referer, Sprache, Cookies …).
+    # TheSportsDB sieht nur den Server, weder IP noch Merkmale der Besucher.
+    proxy_pass_request_headers off;
+    proxy_set_header Host www.thesportsdb.com;
+    proxy_set_header User-Agent "ligazeit-proxy";
+    proxy_set_header Accept "application/json";
+    proxy_ssl_server_name on;
+    proxy_ssl_name www.thesportsdb.com;
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
+    # Cache: pro Endpunkt höchstens eine Anfrage pro Intervall nach außen
+    proxy_cache tsdb;
+    proxy_cache_lock on;
+    proxy_cache_use_stale error timeout updating http_429 http_500 http_502 http_503;
+    proxy_ignore_headers Cache-Control Expires Set-Cookie;
+    proxy_hide_header Set-Cookie;
+    proxy_hide_header Access-Control-Allow-Origin;   # sonst doppelter CORS-Header
+
+    limit_req_status 429;
+
+    add_header Access-Control-Allow-Origin "{{ allowed_origin }}" always;
+    add_header Vary Origin always;
+    add_header X-Cache $upstream_cache_status always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # v1: nur die Endpunkte, die die Seite braucht
+    location ~ ^/v1/(eventsseason|eventsnextleague|eventspastleague|lookuptable|lookuptimeline)\.php$ {
+        limit_except GET { deny all; }
+        limit_req zone=tsdb_perip burst=20 nodelay;
+        proxy_pass https://www.thesportsdb.com/api/v1/json/$tsdb_key/$1.php$is_args$args;
+        proxy_cache_valid 200 {{ cache_ttl_v1 }};
+    }
+
+    # v2: Livescore einer Liga, Key im Header
+    location ~ ^/v2/livescore/(\d+)$ {
+        limit_except GET { deny all; }
+        limit_req zone=tsdb_perip burst=20 nodelay;
+        # proxy_set_header hier ersetzt die Server-Ebene, daher alle wiederholen
+        proxy_set_header Host www.thesportsdb.com;
+        proxy_set_header User-Agent "ligazeit-proxy";
+        proxy_set_header Accept "application/json";
+        proxy_set_header X-API-KEY $tsdb_key;
+        proxy_pass https://www.thesportsdb.com/api/v2/json/livescore/$1;
+        proxy_cache_valid 200 {{ cache_ttl_live }};
+    }
+
+    location / {
+        return 404;
+    }
+}
+{% endif %}
