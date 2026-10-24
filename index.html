@@ -1263,18 +1263,8 @@
     const NOW = new Date();
     const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
 
-    // ━━━ TheSportsDB (über den eigenen Proxy) ━━━━━━━━━━━━━━━━
-    // Der Proxy unter api.ligazeit.de hängt den Schlüssel serverseitig an;
-    // er steht nicht mehr im Seitenquelltext.
-    // TSDB_FREE muss zum Schlüssel in deploy/group_vars/proxy/vault.yml passen:
-    //   true  = Gratis-Schlüssel: Spieltag für Spieltag (eventsround), Tabelle
-    //           max. 5 Plätze, Spielverlauf max. 5 Einträge
-    //   false = Premium: ganze Saison in einer Anfrage (eventsround liefert 404)
     const TSDB_API = 'https://api.ligazeit.de/v1';
     const TSDB_FREE = false;
-    // Livescores (nur Premium, v2): Spielstand und Minute laufender Spiele.
-    // Während Live-Spielen wird nur dieser Feed abgefragt; die ganze Saison
-    // nur alle paar Minuten oder wenn ein Spiel aus dem Feed verschwindet.
     const TSDB_LIVE_API = 'https://api.ligazeit.de/v2/livescore/';
     const TSDB_SEASON_REFRESH_MS = 10 * 60000;
     const TSDB_SEASON = `${SEASON}-${SEASON + 1}`;
@@ -1285,10 +1275,11 @@
       table: null, view: 'schedule', lastUpdate: null, pollTimer: null,
       keyCache: {},
       openMatches: new Set(),  // IDs aufgeklappter Spiele, überlebt Neu-Rendern
-      source: 'openligadb',    // gewählte Datenquelle
+      source: 'thesportsdb',    // gewählte Datenquelle
       loadedRounds: new Set(), // TheSportsDB gratis: bereits geladene Spieltage
       goalCache: new Map(),    // TheSportsDB: Spielverlauf je Spiel und Spielstand
       live: new Map(),         // TheSportsDB Premium: Livescore je Spiel (idEvent)
+      oldbGoals: null,         // OpenLigaDB-Saison als Ersatzquelle für Torschützen
       seasonLoadedAt: 0,       // TheSportsDB Premium: Zeitpunkt der letzten Saisonabfrage
       tableNote: ''
     };
@@ -1484,35 +1475,101 @@
       return r ? `${r.pointsTeam1}:${r.pointsTeam2}` : '-';
     }
 
+    // TheSportsDB hat nicht für jede Liga einen Spielverlauf (z. B. Frauen-
+    // Bundesliga). Fehlen Tore, wird das passende Spiel bei OpenLigaDB gesucht
+    // und die Liste mit mehr Toren genommen. Ein unvollständiges Ergebnis wird
+    // nach GOALS_RETRY_MS erneut abgefragt, falls Tore nachgetragen werden.
+    const GOALS_RETRY_MS = 3 * 60000;
+    const OLDB_GOALS_TTL_MS = 3 * 60000;
     const goalsInFlight = new Set();
+
+    // TheSportsDB-Timeline in das Tor-Format von OpenLigaDB umwandeln.
+    // Annahme: strHome bezeichnet das Team der Spielerin/des Spielers, ein
+    // Eigentor zählt also für das andere Team.
+    async function tsdbTimelineGoals(id) {
+      const j = await tsdb(`/lookuptimeline.php?id=${id}`);
+      let a = 0, b = 0;
+      return tsdbList(j, 'timeline')
+        .filter(t => /goal/i.test(t.strTimeline || '') && !/miss/i.test(t.strTimelineDetail || ''))
+        .sort((x, y) => (Number(x.intTime) || 0) - (Number(y.intTime) || 0))
+        .map(t => {
+          const detail = String(t.strTimelineDetail || '');
+          const own = /own/i.test(detail);
+          const home = String(t.strHome || '').toLowerCase() === 'yes';
+          if (own ? !home : home) a++; else b++;
+          const min = Number(t.intTime);
+          return {
+            scoreTeam1: a, scoreTeam2: b,
+            matchMinute: Number.isInteger(min) ? min : null,
+            goalGetterName: t.strPlayer || '',
+            isPenalty: /pen/i.test(detail), isOwnGoal: own, isOvertime: false
+          };
+        });
+    }
+
+    // OpenLigaDB-Saison der aktuellen Liga, kurz zwischengespeichert.
+    async function oldbSeasonForGoals() {
+      const league = S.league, c = S.oldbGoals;
+      if (c && c.league === league) {
+        if (c.pending) return c.pending;
+        if (Date.now() - c.at < OLDB_GOALS_TTL_MS) return c.matches;
+      }
+      const pending = loadMatches()
+        .then(matches => { S.oldbGoals = { league, at: Date.now(), matches }; return matches; })
+        .catch(e => { S.oldbGoals = null; throw e; });
+      S.oldbGoals = { league, at: 0, matches: [], pending };
+      return pending;
+    }
+
+    // Vereinsnamen vergleichbar machen: "FC Bayern München" ~ "Bayern Munich Women".
+    const TEAM_STOPWORDS = new Set(['fc', 'sc', 'sv', 'vfl', 'vfb', 'tsg', 'sgs', 'bv', 'bsc', 'fsv', 'ev', 'eintr',
+      'women', 'woman', 'frauen', 'ladies', 'und', 'the']);
+    const TEAM_ALIASES = { munich: 'munchen', cologne: 'koln', nuremberg: 'nurnberg' };
+    function teamTokens(name) {
+      return String(name || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/ae/g, 'a').replace(/oe/g, 'o').replace(/ue/g, 'u').replace(/ß/g, 'ss')
+        .split(/[^a-z0-9]+/)
+        .map(t => TEAM_ALIASES[t] || t)
+        .filter(t => t.length >= 3 && !/^\d+$/.test(t) && !TEAM_STOPWORDS.has(t));
+    }
+    function sameTeam(a, b) {
+      const A = teamTokens(a), B = teamTokens(b);
+      return A.some(x => B.some(y => x === y || (x.length >= 4 && y.length >= 4 && (x.startsWith(y) || y.startsWith(x)))));
+    }
+    function oldbTeamName(t) { return t ? `${t.teamName || ''} ${t.shortName || ''}` : ''; }
+
+    function findOldbMatch(m, list) {
+      const t = Date.parse(m.matchDateTime);
+      const time = o => Date.parse(o.matchDateTimeUTC || o.matchDateTime);
+      return list
+        .filter(o => o && Math.abs(time(o) - t) <= 3 * 3600e3
+          && sameTeam(oldbTeamName(o.team1), m.team1.teamName)
+          && sameTeam(oldbTeamName(o.team2), m.team2.teamName))
+        .sort((x, y) => Math.abs(time(x) - t) - Math.abs(time(y) - t))[0] || null;
+    }
+
+    function goalTotal(m) {
+      const r = finalResult(m);
+      return r ? (Number(r.pointsTeam1) || 0) + (Number(r.pointsTeam2) || 0) : 0;
+    }
+
     async function tsdbLoadGoals(m) {
-      const id = Number(m.matchID), key = scoreKey(m);
+      const id = Number(m.matchID), key = scoreKey(m), total = goalTotal(m);
       if (goalsInFlight.has(id)) return;
       goalsInFlight.add(id);
-      let entry;
-      try {
-        const j = await tsdb(`/lookuptimeline.php?id=${id}`);
-        let a = 0, b = 0;
-        const goals = tsdbList(j, 'timeline')
-          .filter(t => /goal/i.test(t.strTimeline || '') && !/miss/i.test(t.strTimelineDetail || ''))
-          .sort((x, y) => (Number(x.intTime) || 0) - (Number(y.intTime) || 0))
-          .map(t => {
-            const detail = String(t.strTimelineDetail || '');
-            const own = /own/i.test(detail);
-            const home = String(t.strHome || '').toLowerCase() === 'yes';
-            if (own ? !home : home) a++; else b++;
-            const min = Number(t.intTime);
-            return {
-              scoreTeam1: a, scoreTeam2: b,
-              matchMinute: Number.isInteger(min) ? min : null,
-              goalGetterName: t.strPlayer || '',
-              isPenalty: /pen/i.test(detail), isOwnGoal: own, isOvertime: false
-            };
-          });
-        entry = { key, goals, error: false };
-      } catch (e) {
-        entry = { key, goals: [], error: true };
+      let goals = null, source = 'thesportsdb';
+      try { goals = await tsdbTimelineGoals(id); } catch (e) { }
+      if (!goals || goals.length < total) {
+        try {
+          const o = findOldbMatch(m, await oldbSeasonForGoals());
+          const og = o && Array.isArray(o.goals) ? o.goals : [];
+          if (og.length > (goals ? goals.length : 0)) { goals = og; source = 'openligadb'; }
+        } catch (e) { }
       }
+      const entry = goals
+        ? { key, goals, error: false, source, incomplete: goals.length < total, at: Date.now() }
+        : { key, goals: [], error: true, source, incomplete: true, at: Date.now() };
       S.goalCache.set(id, entry);
       // Auf das aktuelle Spielobjekt anwenden (kann durch Refresh ersetzt sein)
       for (const x of S.matches) if (Number(x.matchID) === id) applyGoalCache(x);
@@ -1527,7 +1584,7 @@
 
     function applyGoalCache(m) {
       const c = S.goalCache.get(Number(m.matchID));
-      if (c && c.key === scoreKey(m)) { m.goals = c.goals; m.goalsError = c.error; }
+      if (c && c.key === scoreKey(m)) { m.goals = c.goals; m.goalsError = c.error; m.goalsSource = c.source; }
     }
 
     async function tsdbLoadTable() {
@@ -1897,7 +1954,10 @@
     // ━━━ Spielverlauf: Tore mit Zwischenstand, Torschützin/Torschütze, Minute ━━
     function goalsBlock(m) {
       const id = Number(m.matchID);
-      if (m.src === 'tsdb' && m.goals == null) {
+      const cached = S.goalCache.get(id);
+      const retry = m.src === 'tsdb' && cached && cached.key === scoreKey(m)
+        && cached.incomplete && Date.now() - cached.at > GOALS_RETRY_MS;
+      if (m.src === 'tsdb' && (m.goals == null || retry)) {
         tsdbLoadGoals(m);
         return `<div class="goals" id="goals-${id}"><div class="g-empty">Spielverlauf wird geladen…</div></div>`;
       }
@@ -1941,6 +2001,9 @@
             : '<div class="g-empty">Für dieses Spiel sind keine Torschützen eingetragen.</div>';
       } else if (goals.length < total) {
         html += '<div class="g-empty">Nicht alle Tore sind eingetragen.</div>';
+      }
+      if (goals.length && m.src === 'tsdb' && m.goalsSource === 'openligadb') {
+        html += '<div class="g-empty">Torschützen laut OpenLigaDB</div>';
       }
       return `<div class="goals" id="goals-${id}">${html}</div>`;
     }
