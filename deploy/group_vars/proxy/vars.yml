@@ -1,0 +1,17 @@
+api_domain: api.ligazeit.de
+allowed_origin: https://ligazeit.de
+letsencrypt_email: misc@leonmortenrichter.de
+
+# false = Testbetrieb mit selbst signiertem Zertifikat statt Let's Encrypt
+use_letsencrypt: true
+
+# Kommt aus der verschlüsselten vault.yml
+tsdb_api_key: "{{ vault_tsdb_api_key }}"
+
+# Wie lange Antworten zwischengespeichert werden
+cache_ttl_v1: 30s
+cache_ttl_live: 20s
+
+# Fehlerlog des Proxys. "crit" enthält praktisch nie Client-IPs.
+# Zur Fehlersuche vorübergehend auf "error" setzen und danach zurück.
+nginx_error_log_level: crit

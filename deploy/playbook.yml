@@ -1,0 +1,227 @@
+- name: TheSportsDB-Proxy einrichten
+  hosts: proxy
+  become: true
+
+  vars:
+    acme_root: /var/www/letsencrypt
+    cert_dir: >-
+      {{ '/etc/letsencrypt/live/' ~ api_domain if use_letsencrypt | bool
+         else '/etc/ssl/ligazeit-selfsigned' }}
+    nginx_site: /etc/nginx/sites-available/api.conf
+
+  tasks:
+    - name: Key-Format prüfen (landet in der nginx-Konfiguration)
+      ansible.builtin.assert:
+        that: tsdb_api_key is match('^[A-Za-z0-9]+$')
+        fail_msg: "tsdb_api_key fehlt oder enthält unerwartete Zeichen."
+        quiet: true
+      no_log: true
+
+    # ── System ────────────────────────────────────────────────────────
+    - name: Pakete installieren
+      ansible.builtin.apt:
+        name: [nginx, certbot, unattended-upgrades, ufw]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Automatische Sicherheitsupdates aktivieren
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        mode: "0644"
+
+    - name: SSH nur noch mit Schlüssel
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/01-hardening.conf
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin prohibit-password
+        mode: "0644"
+      notify: SSH neu laden
+
+    - name: Firewall-Regeln (SSH, HTTP, HTTPS)
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: ["22", "80", "443"]
+
+    - name: Firewall-Protokollierung aus
+      community.general.ufw:
+        logging: "off"
+
+    - name: Firewall einschalten, alles andere eingehend sperren
+      community.general.ufw:
+        state: enabled
+        direction: incoming
+        policy: deny
+
+    # ── nginx ─────────────────────────────────────────────────────────
+    - name: Verzeichnis für die Let's-Encrypt-Challenge
+      ansible.builtin.file:
+        path: "{{ acme_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Cache-Verzeichnis
+      ansible.builtin.file:
+        path: /var/cache/nginx/tsdb
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0700"
+
+    - name: API-Key ablegen (nur für root lesbar)
+      ansible.builtin.copy:
+        dest: /etc/nginx/tsdb-key.conf
+        content: 'set $tsdb_key "{{ tsdb_api_key }}";'
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: nginx neu laden
+
+    - name: Zugriffsprotokoll von nginx global abschalten
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: '^\s*access_log\s'
+        line: "\taccess_log off;"
+      notify: nginx neu laden
+
+    - name: Alte Zugriffsprotokolle löschen
+      ansible.builtin.shell: rm -f /var/log/nginx/access.log*
+      args:
+        removes: /var/log/nginx/access.log
+      changed_when: true
+
+    - name: Standardseite von nginx entfernen
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: nginx neu laden
+
+    # ── self signed cert ────────────────
+    - name: Verzeichnis für das Testzertifikat
+      ansible.builtin.file:
+        path: "{{ cert_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      when: not use_letsencrypt | bool
+
+    - name: Selbst signiertes Zertifikat erzeugen (30 Tage gültig)
+      ansible.builtin.command:
+        cmd: >-
+          openssl req -x509 -nodes -days 30
+          -newkey ec -pkeyopt ec_paramgen_curve:prime256v1
+          -subj "/CN={{ api_domain }}"
+          -addext "subjectAltName=DNS:{{ api_domain }}"
+          -keyout {{ cert_dir }}/privkey.pem
+          -out {{ cert_dir }}/fullchain.pem
+        creates: "{{ cert_dir }}/fullchain.pem"
+      when: not use_letsencrypt | bool
+
+    - name: Gibt es schon ein Zertifikat?
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/fullchain.pem"
+      register: cert_before
+
+    - name: Seite konfigurieren
+      ansible.builtin.template:
+        src: nginx-api.conf.j2
+        dest: "{{ nginx_site }}"
+        mode: "0644"
+      vars:
+        tls_enabled: "{{ cert_before.stat.exists }}"
+      notify: nginx neu laden
+
+    - name: Seite aktivieren
+      ansible.builtin.file:
+        src: "{{ nginx_site }}"
+        dest: /etc/nginx/sites-enabled/api.conf
+        state: link
+      notify: nginx neu laden
+
+    - name: nginx läuft und startet beim Booten
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Änderungen jetzt anwenden
+      ansible.builtin.meta: flush_handlers
+
+    # ── Zertifikat ────────────────────────────────────────────────────
+    - name: Zertifikat bei Let's Encrypt holen
+      ansible.builtin.command:
+        cmd: >-
+          certbot certonly --webroot -w {{ acme_root }}
+          -d {{ api_domain }} -m {{ letsencrypt_email }}
+          --agree-tos --non-interactive
+        creates: "{{ cert_dir }}/fullchain.pem"
+      when: use_letsencrypt | bool
+
+    - name: nginx nach jeder Verlängerung neu laden
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+        content: |
+          #!/bin/sh
+          systemctl reload nginx
+        mode: "0755"
+      when: use_letsencrypt | bool
+
+    - name: Verlängerungs-Timer aktiv
+      ansible.builtin.systemd_service:
+        name: certbot.timer
+        state: started
+        enabled: true
+      when: use_letsencrypt | bool
+
+    - name: HTTPS-Konfiguration einspielen
+      ansible.builtin.template:
+        src: nginx-api.conf.j2
+        dest: "{{ nginx_site }}"
+        mode: "0644"
+      vars:
+        tls_enabled: true
+      notify: nginx neu laden
+
+    - name: Änderungen jetzt anwenden
+      ansible.builtin.meta: flush_handlers
+
+    - name: Rauchtest über HTTPS
+      ansible.builtin.uri:
+        url: "https://{{ api_domain if use_letsencrypt | bool else '127.0.0.1' }}/"
+        headers:
+          Host: "{{ api_domain }}"
+        validate_certs: "{{ use_letsencrypt | bool }}"
+        status_code: 404
+      changed_when: false
+
+  handlers:
+    - name: nginx-Konfiguration prüfen
+      ansible.builtin.command: nginx -t
+      changed_when: false
+      listen: nginx neu laden
+
+    - name: nginx neu laden
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    - name: SSH-Konfiguration prüfen
+      ansible.builtin.command: sshd -t
+      changed_when: false
+      listen: SSH neu laden
+
+    - name: SSH neu laden
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded

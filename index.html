@@ -989,6 +989,27 @@
       text-decoration: underline
     }
 
+    .source-pick {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    .source-select {
+      font-size: 12px;
+      padding: 4px 26px 4px 10px;
+      background-position: right 8px center;
+      background-size: 10px
+    }
+
+    .table-note {
+      padding: 10px 20px;
+      font-size: 12px;
+      color: var(--text2);
+      border-top: 1px solid var(--border-light)
+    }
+
     .hidden {
       display: none !important
     }
@@ -1204,20 +1225,35 @@
     <div id="viewTable" class="hidden"></div>
   </main>
 
-  <footer class="footer">Daten bereitgestellt von <a href="https://www.openligadb.de" target="_blank"
-      rel="noopener">OpenLigaDB</a></footer>
+  <footer class="footer">
+    <div>Daten bereitgestellt von <a id="sourceLink" href="https://www.openligadb.de" target="_blank"
+        rel="noopener">OpenLigaDB</a><span id="sourceNote"></span></div>
+    <div class="source-pick">
+      <label for="sourceSelect">Datenquelle</label>
+      <select class="league-select source-select" id="sourceSelect">
+        <option value="openligadb">OpenLigaDB</option>
+        <option value="thesportsdb">Ligazeit</option>
+      </select>
+    </div>
+  </footer>
 
   <script>
     // ━━━ Liga-Konfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // OpenLigaDB-Shortcuts werden pro Saison von der Community angelegt und
     // können sich ändern (Frauen 2026/27: ffb1/ffb2 statt fbl1/fbl2).
     // Es wird der erste Shortcut verwendet, der Spiele liefert.
+    // tsdb: Liga-ID bei TheSportsDB und Anzahl Spieltage; null = dort nicht geführt.
     const LEAGUES = {
-      frauen1: { keys: ['ffb1', 'fbl1'], label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
-      frauen2: { keys: ['ffb2', 'fbl2'], label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
-      maenner1: { keys: ['bl1'], label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
-      maenner2: { keys: ['bl2'], label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
-      maenner3: { keys: ['bl3'], label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+      frauen1: { keys: ['ffb1', 'fbl1'], tsdb: { id: 5204, rounds: 26 }, label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
+      frauen2: { keys: ['ffb2', 'fbl2'], tsdb: null, label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
+      maenner1: { keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
+      maenner2: { keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
+      maenner3: { keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+    };
+
+    const SOURCES = {
+      openligadb: { label: 'OpenLigaDB', url: 'https://www.openligadb.de' },
+      thesportsdb: { label: 'TheSportsDB', url: 'https://api.ligazeit.de' },
     };
 
     const API = 'https://api.openligadb.de';
@@ -1227,12 +1263,27 @@
     const NOW = new Date();
     const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
 
+    // ━━━ TheSportsDB ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // '123' ist der öffentliche Gratis-Schlüssel. Ein Premium-Schlüssel kommt hier
+    // hinein – Achtung: er ist dann im Seitenquelltext für alle sichtbar.
+    // Gratis: nur Spieltag für Spieltag (eventsround), Tabelle max. 5 Plätze,
+    // Spielverlauf max. 5 Einträge, 30 Anfragen/Minute.
+    // Premium: ganze Saison in einer Anfrage (eventsround liefert dort 404).
+    const TSDB_API = 'https://www.thesportsdb.com/api/v1/json/';
+    const TSDB_KEY = '123';
+    const TSDB_FREE = TSDB_KEY === '123' || TSDB_KEY === '3';
+    const TSDB_SEASON = `${SEASON}-${SEASON + 1}`;
+
     // ━━━ State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const S = {
       league: 'maenner1', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
       table: null, view: 'schedule', lastUpdate: null, pollTimer: null,
       keyCache: {},
-      openMatches: new Set()   // IDs aufgeklappter Spiele, überlebt Neu-Rendern
+      openMatches: new Set(),  // IDs aufgeklappter Spiele, überlebt Neu-Rendern
+      source: 'openligadb',    // gewählte Datenquelle
+      loadedRounds: new Set(), // TheSportsDB gratis: bereits geladene Spieltage
+      goalCache: new Map(),    // TheSportsDB: Spielverlauf je Spiel und Spielstand
+      tableNote: ''
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1241,10 +1292,197 @@
     function leagueCfg() { return LEAGUES[S.league] || LEAGUES.maenner1; }
     function leagueKey() { return S.keyCache[S.league] || leagueCfg().keys[0]; }
 
+    // Tatsächlich genutzte Quelle: TheSportsDB nur, wenn die Liga dort geführt wird.
+    function src() { return S.source === 'thesportsdb' && leagueCfg().tsdb ? 'thesportsdb' : 'openligadb'; }
+    function tsdbFreeMode() { return src() === 'thesportsdb' && TSDB_FREE; }
+
     async function api(path) {
       const r = await fetch(API + path);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
+    }
+
+    // ━━━ TheSportsDB-Adapter ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Wandelt TheSportsDB-Daten in die Form von OpenLigaDB um, damit das
+    // Rendering für beide Quellen gleich bleibt.
+    async function tsdb(path) {
+      const r = await fetch(TSDB_API + encodeURIComponent(TSDB_KEY) + path);
+      if (r.status === 429) throw new Error('TheSportsDB: zu viele Anfragen – bitte in einer Minute erneut versuchen');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();       // leere Antwort = keine Daten
+      return text.trim() ? JSON.parse(text) : {};
+    }
+
+    function tsdbList(j, key) { const v = j && j[key]; return Array.isArray(v) ? v : []; }
+    function tsdbLeagueId() { return String(leagueCfg().tsdb.id); }
+    function tsdbOwn(e) { return e && String(e.idLeague) === tsdbLeagueId(); }
+
+    const TSDB_FINISHED = new Set(['match finished', 'ft', 'aet', 'pen', 'after extra time', 'after penalties', 'awarded', 'aw', 'wo']);
+    const TSDB_OFF = { postponed: 'Verlegt', pst: 'Verlegt', cancelled: 'Abgesagt', canc: 'Abgesagt', abandoned: 'Abgebrochen', abd: 'Abgebrochen', suspended: 'Unterbrochen', susp: 'Unterbrochen' };
+
+    // strTimestamp ist UTC, meist ohne Zeitzonenangabe.
+    function tsdbTime(e) {
+      let t = e.strTimestamp || (e.dateEvent && e.strTime ? `${e.dateEvent}T${e.strTime}` : e.dateEvent);
+      if (!t) return null;
+      t = String(t).trim().replace(' ', 'T');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) t += 'T12:00:00';
+      if (!/(Z|[+-]\d{2}:?\d{2})$/.test(t)) t += 'Z';
+      const d = new Date(t);
+      return isNaN(d) ? null : d.toISOString();
+    }
+
+    function tsdbScore(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isInteger(n) && n >= 0 && n < 100 ? n : null;
+    }
+
+    // Wappen in 50 px statt Original (bis 720 px).
+    function tsdbBadge(u) {
+      const x = safeUrl(u);
+      return x ? x.replace(/\/(tiny|small|medium)$/, '') + '/tiny' : '';
+    }
+
+    function tsdbMatch(e) {
+      const id = Number(e.idEvent), round = Number(e.intRound), when = tsdbTime(e);
+      if (!Number.isInteger(id) || !Number.isInteger(round) || round < 1 || !when) return null;
+      const status = String(e.strStatus || '').trim().toLowerCase();
+      const s1 = tsdbScore(e.intHomeScore), s2 = tsdbScore(e.intAwayScore);
+      const hasScore = s1 !== null && s2 !== null;
+      const offLabel = TSDB_OFF[status] || (String(e.strPostponed || '').toLowerCase() === 'yes' ? 'Verlegt' : '');
+      const finished = !offLabel && (TSDB_FINISHED.has(status)
+        || (!status && hasScore && Date.now() - Date.parse(when) > MATCH_DUR_MS));
+      return {
+        src: 'tsdb', matchID: id, matchDateTime: when,
+        matchIsFinished: finished, matchIsOff: !!offLabel, offLabel,
+        team1: { teamName: e.strHomeTeam, shortName: e.strHomeTeam, teamIconUrl: tsdbBadge(e.strHomeTeamBadge) },
+        team2: { teamName: e.strAwayTeam, shortName: e.strAwayTeam, teamIconUrl: tsdbBadge(e.strAwayTeamBadge) },
+        matchResults: hasScore ? [{ resultOrderID: 2, pointsTeam1: s1, pointsTeam2: s2 }] : [],
+        group: { groupOrderID: round, groupName: `${round}. Spieltag` },
+        goals: null
+      };
+    }
+
+    function tsdbMatches(events) {
+      return events.filter(tsdbOwn).map(tsdbMatch).filter(Boolean);
+    }
+
+    // Gratis-Schlüssel: liefert einen kompletten Spieltag.
+    async function tsdbLoadRound(n) {
+      const j = await tsdb(`/eventsround.php?id=${tsdbLeagueId()}&r=${n}&s=${TSDB_SEASON}`);
+      return tsdbMatches(tsdbList(j, 'events'));
+    }
+
+    // Premium-Schlüssel: komplette Saison.
+    async function tsdbLoadSeason() {
+      const j = await tsdb(`/eventsseason.php?id=${tsdbLeagueId()}&s=${TSDB_SEASON}`);
+      return tsdbMatches(tsdbList(j, 'events'));
+    }
+
+    // Spieltag des nächsten Spiels, sonst des letzten Spiels dieser Saison.
+    async function tsdbGuessRound() {
+      for (const ep of ['eventsnextleague', 'eventspastleague']) {
+        try {
+          const j = await tsdb(`/${ep}.php?id=${tsdbLeagueId()}`);
+          const e = tsdbList(j, 'events').find(x => tsdbOwn(x) && x.strSeason === TSDB_SEASON);
+          const n = e ? Number(e.intRound) : NaN;
+          if (Number.isInteger(n) && n >= 1) return n;
+        } catch (e) { }
+      }
+      return 1;
+    }
+
+    // Aktueller Spieltag: der des frühesten laufenden oder kommenden Spiels.
+    function tsdbCurrentRound(fallback) {
+      const now = Date.now();
+      const next = S.matches
+        .filter(m => !m.matchIsFinished && !m.matchIsOff && Date.parse(m.matchDateTime) + MATCH_DUR_MS > now)
+        .sort((a, b) => Date.parse(a.matchDateTime) - Date.parse(b.matchDateTime))[0];
+      return next ? next.group.groupOrderID : (fallback ?? S.order[S.order.length - 1] ?? 1);
+    }
+
+    // Gratis: Spieltage nachladen und mit den vorhandenen zusammenführen.
+    async function tsdbFetchRounds(rounds) {
+      const lists = await Promise.all(rounds.map(tsdbLoadRound));
+      const keep = S.matches.filter(m => !rounds.includes(m.group.groupOrderID));
+      rounds.forEach(n => S.loadedRounds.add(n));
+      applyMatches(keep.concat(lists.flat()));
+    }
+
+    async function tsdbEnsureRound(n) {
+      if (!tsdbFreeMode() || S.loadedRounds.has(n)) return;
+      await tsdbFetchRounds([n]);
+    }
+
+    // Spielverlauf aus der Timeline (gratis: max. 5 Einträge inkl. Karten).
+    // Annahme: strHome bezeichnet das Team der Spielerin/des Spielers, ein
+    // Eigentor zählt also für das andere Team.
+    function scoreKey(m) {
+      const r = finalResult(m);
+      return r ? `${r.pointsTeam1}:${r.pointsTeam2}` : '-';
+    }
+
+    const goalsInFlight = new Set();
+    async function tsdbLoadGoals(m) {
+      const id = Number(m.matchID), key = scoreKey(m);
+      if (goalsInFlight.has(id)) return;
+      goalsInFlight.add(id);
+      let entry;
+      try {
+        const j = await tsdb(`/lookuptimeline.php?id=${id}`);
+        let a = 0, b = 0;
+        const goals = tsdbList(j, 'timeline')
+          .filter(t => /goal/i.test(t.strTimeline || '') && !/miss/i.test(t.strTimelineDetail || ''))
+          .sort((x, y) => (Number(x.intTime) || 0) - (Number(y.intTime) || 0))
+          .map(t => {
+            const detail = String(t.strTimelineDetail || '');
+            const own = /own/i.test(detail);
+            const home = String(t.strHome || '').toLowerCase() === 'yes';
+            if (own ? !home : home) a++; else b++;
+            const min = Number(t.intTime);
+            return {
+              scoreTeam1: a, scoreTeam2: b,
+              matchMinute: Number.isInteger(min) ? min : null,
+              goalGetterName: t.strPlayer || '',
+              isPenalty: /pen/i.test(detail), isOwnGoal: own, isOvertime: false
+            };
+          });
+        entry = { key, goals, error: false };
+      } catch (e) {
+        entry = { key, goals: [], error: true };
+      }
+      S.goalCache.set(id, entry);
+      // Auf das aktuelle Spielobjekt anwenden (kann durch Refresh ersetzt sein)
+      for (const x of S.matches) if (Number(x.matchID) === id) applyGoalCache(x);
+      goalsInFlight.delete(id);
+      const row = $('viewSchedule').querySelector(`.match-row[data-mid="${id}"]`);
+      const cur = S.matches.find(x => Number(x.matchID) === id);
+      if (row && cur && S.openMatches.has(id)) {
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('goals')) next.outerHTML = goalsBlock(cur);
+      }
+    }
+
+    function applyGoalCache(m) {
+      const c = S.goalCache.get(Number(m.matchID));
+      if (c && c.key === scoreKey(m)) { m.goals = c.goals; m.goalsError = c.error; }
+    }
+
+    async function tsdbLoadTable() {
+      const base = `/lookuptable.php?l=${tsdbLeagueId()}`;
+      let rows = tsdbList(await tsdb(`${base}&s=${TSDB_SEASON}`), 'table');
+      if (!rows.length) rows = tsdbList(await tsdb(base), 'table');   // s= nur für Top-Ligen
+      const table = rows
+        .filter(t => !t.idLeague || tsdbOwn(t))
+        .sort((a, b) => (Number(a.intRank) || 99) - (Number(b.intRank) || 99))
+        .map(t => ({
+          rank: Number(t.intRank), teamName: t.strTeam, shortName: t.strTeam, teamIconUrl: tsdbBadge(t.strBadge),
+          matches: t.intPlayed, won: t.intWin, draw: t.intDraw, lost: t.intLoss,
+          goals: t.intGoalsFor, opponentGoals: t.intGoalsAgainst, goalDiff: t.intGoalDifference, points: t.intPoints
+        }));
+      S.tableNote = TSDB_FREE && table.length && table.length <= 5
+        ? 'Mit dem kostenlosen Zugang liefert TheSportsDB nur die ersten 5 Plätze.' : '';
+      return table;
     }
 
     // Lädt die Spiele der Saison und merkt sich den funktionierenden Shortcut.
@@ -1270,7 +1508,7 @@
         const cg = await api(`/getcurrentgroup/${leagueKey()}`);
         if (cg && order.includes(cg.groupOrderID)) return cg.groupOrderID;
       } catch (e) { }
-      const open = order.find(n => S.mdays[n].matches.some(m => !m.matchIsFinished));
+      const open = order.find(n => S.mdays[n].matches.some(m => !m.matchIsFinished && !m.matchIsOff));
       return open ?? order[order.length - 1] ?? 1;
     }
 
@@ -1289,7 +1527,7 @@
     }
 
     function isLive(m) {
-      if (m.matchIsFinished) return false;
+      if (m.matchIsFinished || m.matchIsOff) return false;
       const ms = Date.now() - new Date(m.matchDateTime).getTime();
       return ms >= 0 && ms <= MATCH_DUR_MS;
     }
@@ -1420,16 +1658,51 @@
       return g;
     }
 
+    // Spiele übernehmen; bei TheSportsDB gratis sind alle Spieltage als Reiter
+    // sichtbar, auch wenn sie erst beim Anklicken geladen werden.
+    function applyMatches(matches) {
+      if (src() === 'thesportsdb') matches.forEach(applyGoalCache);
+      S.matches = matches;
+      S.mdays = groupByDay(matches);
+      const n = src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
+      const all = new Set(Object.keys(S.mdays).map(Number));
+      for (let i = 1; i <= n; i++) all.add(i);
+      S.order = [...all].sort((a, b) => a - b);
+    }
+
+    // Erstes Laden einer Liga; liefert den aktuellen Spieltag.
+    async function loadInitial() {
+      S.loadedRounds = new Set();
+      if (src() === 'openligadb') {
+        applyMatches(await loadMatches());
+        return loadCurrentGroup(S.order);
+      }
+      if (!TSDB_FREE) {
+        applyMatches(await tsdbLoadSeason());
+        return tsdbCurrentRound();
+      }
+      // Gratis: vermuteten Spieltag und den davor laden, damit ein noch
+      // laufendes Spiel des Vortags-Spieltags nicht fehlt.
+      const guess = await tsdbGuessRound();
+      S.matches = [];
+      await tsdbFetchRounds(guess > 1 ? [guess - 1, guess] : [guess]);
+      return tsdbCurrentRound(guess);
+    }
+
     // ━━━ Live Polling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function startPolling() { stopPolling(); S.pollTimer = setInterval(() => refreshData(true), LIVE_POLL_MS); }
     function stopPolling() { if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; } }
 
     async function refreshData(silent) {
       try {
-        const matches = await loadMatches();
-        S.matches = matches;
-        S.mdays = groupByDay(matches);
-        S.order = Object.keys(S.mdays).map(Number).sort((a, b) => a - b);
+        if (src() === 'openligadb') applyMatches(await loadMatches());
+        else if (!TSDB_FREE) applyMatches(await tsdbLoadSeason());
+        else {
+          // Gratis: nur Spieltage mit Live-Spielen und den angezeigten neu laden
+          const rounds = new Set(getLiveMatches().map(m => m.group.groupOrderID));
+          if (S.loadedRounds.has(S.sel)) rounds.add(S.sel);
+          if (rounds.size) await tsdbFetchRounds([...rounds]);
+        }
         S.lastUpdate = new Date();
         updateLiveIndicator();
         if (S.view === 'schedule') renderMatches();
@@ -1521,6 +1794,10 @@
         scoreD = `<div class="score live">0 <span class="score-sep">:</span> 0</div>`;
         scoreM1 = '0'; scoreM2 = '0';
         stHTML = `<span class="st st-live"><span class="live-dot"></span> ${matchMinute(m)}</span>`; metaSt = stHTML;
+      } else if (m.matchIsOff) {
+        scoreD = `<div class="score upc">–</div>`;
+        stHTML = `<span class="st st-upc">${esc(m.offLabel)}</span>`;
+        metaSt = stHTML;
       } else {
         scoreD = `<div class="score upc">${d.tm} Uhr</div>`;
         stHTML = `<span class="st st-upc">${d.wd}. ${d.dd}</span>`;
@@ -1546,6 +1823,13 @@
     // ━━━ Spielverlauf: Tore mit Zwischenstand, Torschützin/Torschütze, Minute ━━
     function goalsBlock(m) {
       const id = Number(m.matchID);
+      if (m.src === 'tsdb' && m.goals == null) {
+        tsdbLoadGoals(m);
+        return `<div class="goals" id="goals-${id}"><div class="g-empty">Spielverlauf wird geladen…</div></div>`;
+      }
+      if (m.goalsError) {
+        return `<div class="goals" id="goals-${id}"><div class="g-empty">Spielverlauf konnte nicht geladen werden.</div></div>`;
+      }
       const r = finalResult(m);
       const total = r ? (Number(r.pointsTeam1) || 0) + (Number(r.pointsTeam2) || 0) : 0;
       const goals = (Array.isArray(m.goals) ? m.goals : [])
@@ -1644,15 +1928,20 @@
     // ━━━ Render: Table ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function renderTable() {
       const el = $('viewTable');
-      if (!S.table || !S.table.length) {
+      if (!S.table) {
         el.innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Tabelle wird geladen…</span></div></div>';
+        return;
+      }
+      if (!S.table.length) {
+        el.innerHTML = '<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Tabelle</h3><p>Für diese Liga liegt noch keine Tabelle vor.</p></div></div>';
         return;
       }
       const rows = S.table.map((t, i) => {
         const ic = teamIcon(t);
         const nm = esc(t.shortName || t.teamName);
         const df = Number(t.goalDiff), dc = df > 0 ? 'pos' : df < 0 ? 'neg' : '', ds = df > 0 ? '+' + num(df) : num(df);
-        return `<tr><td class="rk">${i + 1}</td><td><div class="tc">${ic}<span>${nm}</span></div></td>
+        const rk = Number.isInteger(t.rank) && t.rank > 0 ? t.rank : i + 1;
+        return `<tr><td class="rk">${rk}</td><td><div class="tc">${ic}<span>${nm}</span></div></td>
       <td class="c">${num(t.matches)}</td><td class="c">${num(t.won)}</td><td class="c">${num(t.draw)}</td><td class="c">${num(t.lost)}</td>
       <td class="c">${num(t.goals)}:${num(t.opponentGoals)}</td><td class="diff ${dc}">${ds}</td><td class="pts">${num(t.points)}</td></tr>`;
       }).join('');
@@ -1660,7 +1949,7 @@
     <div class="card-header"><h2>Tabelle – ${esc(leagueCfg().fullLabel)}</h2><span class="pill pill-muted">Saison ${SEASON}/${String(SEASON + 1).slice(-2)}</span></div>
     <div style="overflow-x:auto"><table class="lt"><thead><tr>
       <th class="c">#</th><th>Verein</th><th class="c">Sp</th><th class="c">S</th><th class="c">U</th><th class="c">N</th><th class="c">Tore</th><th class="c">Diff</th><th class="c">Pkt</th>
-    </tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    </tr></thead><tbody>${rows}</tbody></table></div>${S.tableNote ? `<div class="table-note">${esc(S.tableNote)}</div>` : ''}</div>`;
     }
 
     // ━━━ View Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1678,7 +1967,14 @@
     }
 
     async function loadTable() {
-      try { S.table = await api(`/getbltable/${leagueKey()}/${SEASON}`); renderTable(); }
+      const league = S.league, source = src();
+      try {
+        S.tableNote = '';
+        const table = source === 'thesportsdb' ? await tsdbLoadTable() : await api(`/getbltable/${leagueKey()}/${SEASON}`);
+        if (S.league !== league || src() !== source) return;   // inzwischen gewechselt
+        S.table = Array.isArray(table) ? table : [];
+        renderTable();
+      }
       catch (e) {
         $('viewTable').innerHTML = `<div class="card"><div class="state-msg"><div class="ico">⚠️</div><h3>Fehler</h3><p>${esc(e.message)}</p>
       <button class="btn-retry" onclick="loadTable()">Erneut versuchen</button></div></div>`;
@@ -1695,11 +1991,25 @@
     }
 
     // ━━━ Events ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    $('tabsMD').addEventListener('click', e => {
+    $('tabsMD').addEventListener('click', async e => {
       const t = e.target.closest('.md-tab');
       if (!t) return;
-      S.sel = parseInt(t.dataset.md);
-      renderTabs(); renderMatches();
+      const n = parseInt(t.dataset.md), league = S.league;
+      S.sel = n;
+      renderTabs();
+      if (tsdbFreeMode() && !S.loadedRounds.has(n)) {
+        $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spieltag wird geladen…</span></div></div>';
+        try { await tsdbEnsureRound(n); }
+        catch (err) {
+          if (S.sel === n && S.league === league) {
+            $('viewSchedule').innerHTML = `<div class="card"><div class="state-msg"><div class="ico">⚠️</div><h3>Spieltag konnte nicht geladen werden</h3>
+          <p>${esc(err.message)}</p><button class="btn-retry" onclick="document.querySelector('.md-tab.active')?.click()">Erneut versuchen</button></div></div>`;
+          }
+          return;
+        }
+        if (S.sel !== n || S.league !== league) return;   // inzwischen weitergeklickt
+      }
+      renderMatches(); updateLiveIndicator();
     });
 
     $('viewToggle').addEventListener('click', e => {
@@ -1712,6 +2022,24 @@
     });
 
     $('btnRefresh').addEventListener('click', () => { S.table = null; init(); });
+
+    // ━━━ Datenquelle ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function renderSource() {
+      const cur = SOURCES[src()];
+      $('sourceSelect').value = S.source;
+      $('sourceLink').textContent = cur.label;
+      $('sourceLink').href = cur.url;
+      $('sourceNote').textContent = S.source === 'thesportsdb' && src() !== 'thesportsdb'
+        ? ' (TheSportsDB führt diese Liga nicht)' : '';
+    }
+
+    $('sourceSelect').addEventListener('change', e => {
+      const v = e.target.value;
+      if (!SOURCES[v] || v === S.source) return;
+      S.source = v; S.table = null; S.openMatches.clear(); stopPolling();
+      try { localStorage.setItem('bl-source', v); } catch (err) { }
+      switchView('schedule'); init();
+    });
 
     // ━━━ Design: 1. gespeicherte Wahl, 2. Systemeinstellung ━━━━━━━━
     const THEME_KEY = 'bl-theme';
@@ -1770,15 +2098,11 @@
     async function init() {
       const rb = $('btnRefresh'); rb.classList.add('spin');
       $('badgeSeason').textContent = SEASON + '/' + String(SEASON + 1).slice(-2);
-      renderLeagueSwitch();
+      renderLeagueSwitch(); renderSource();
       $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>';
       $('tabsMD').innerHTML = '<span class="md-label">Spieltag</span>';
       try {
-        const matches = await loadMatches();
-        S.matches = matches;
-        S.mdays = groupByDay(matches);
-        S.order = Object.keys(S.mdays).map(Number).sort((a, b) => a - b);
-        const cur = await loadCurrentGroup(S.order);
+        const cur = await loadInitial();
         S.cur = cur; S.sel = cur;
         S.lastUpdate = new Date();
         renderTabs(); renderMatches(); updateLiveIndicator();
@@ -1799,6 +2123,8 @@
       if (saved === 'maenner') localStorage.setItem('bl-league', 'maenner1');
       const current = localStorage.getItem('bl-league');
       if (current && LEAGUES[current]) S.league = current;
+      const source = localStorage.getItem('bl-source');
+      if (source && SOURCES[source]) S.source = source;
     } catch (e) { }
 
     init();
