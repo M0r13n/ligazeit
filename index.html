@@ -4,6 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Bilder und Datenabrufe nur von bekannten Hosts. Vereinswappen kommen aus
+       Community-Daten; ohne diese Liste könnte jeder, der ein Wappen einträgt,
+       die Browser aller Besucher Anfragen an einen beliebigen Server senden lassen. -->
+  <meta http-equiv="Content-Security-Policy"
+    content="img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://*.wikipedia.org https://r2.thesportsdb.com https://www.thesportsdb.com; connect-src https://api.openligadb.de https://api.ligazeit.de">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#ffffff" id="metaThemeColor">
   <script>
     // Design vor dem ersten Zeichnen festlegen, damit nichts aufblitzt:
@@ -1698,7 +1704,7 @@
           const map = Object.create(null);
           for (const t of lists.flat()) {
             const k = clubKey(t.teamName);
-            const u = safeUrl(ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl);
+            const u = safeIconUrl(ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl);
             if (k && u && !map[k]) map[k] = u;
           }
           return map;
@@ -1710,14 +1716,14 @@
     // Ersatz-URL für Wikimedia-Uploads: Special:FilePath folgt Umbenennungen
     // und Verschiebungen nach Commons, der Hash-Pfad der API dagegen nicht.
     function wikiFilePath(url) {
-      const m = /^https?:\/\/upload\.wikimedia\.org\/wikipedia\/([^/]+)\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/.exec(url || '');
+      const m = /^https?:\/\/upload\.wikimedia\.org\/wikipedia\/([a-z-]+)\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/.exec(url || '');
       if (!m) return null;
       const host = m[1] === 'commons' ? 'commons.wikimedia.org' : `${m[1]}.wikipedia.org`;
       return `https://${host}/wiki/Special:FilePath/${m[2]}`;
     }
 
     function teamIcon(t) {
-      const orig = safeUrl(t.teamIconUrl);
+      const orig = safeIconUrl(t.teamIconUrl);
       const first = ICON_OVERRIDES[orig] || orig;
       const attrs = `data-orig="${esc(orig)}" data-club="${esc(clubKey(t.teamName))}"`;
       if (!first) {
@@ -1738,7 +1744,7 @@
         return undefined;
       };
       for (let stage = Number(d.stage) + 1; stage <= 3; stage++) {
-        const url = safeUrl(await next(stage));
+        const url = safeIconUrl(await next(stage));
         if (url && !tried.has(url)) {
           d.stage = stage;
           d.tried = [...tried].join(' ');
@@ -1767,6 +1773,18 @@
     function safeUrl(u) {
       try { const x = new URL(String(u)); return x.protocol === 'https:' ? x.href : ''; }
       catch (e) { return ''; }
+    }
+
+    // Wappen-URLs stammen aus Community-Daten (OpenLigaDB, TheSportsDB). Nur
+    // diese Hosts werden geladen, sonst könnte ein eingetragenes "Wappen" als
+    // Zählpixel dienen. Muss zur img-src-Liste der Content-Security-Policy passen.
+    const ICON_HOSTS = [/^upload\.wikimedia\.org$/, /^commons\.wikimedia\.org$/, /^[a-z-]+\.wikipedia\.org$/,
+      /^r2\.thesportsdb\.com$/, /^www\.thesportsdb\.com$/];
+    function safeIconUrl(u) {
+      const x = safeUrl(u);
+      if (!x) return '';
+      const host = new URL(x).hostname;
+      return ICON_HOSTS.some(r => r.test(host)) ? x : '';
     }
 
     function groupByDay(matches) {
