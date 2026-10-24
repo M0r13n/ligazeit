@@ -1272,6 +1272,11 @@
     //   false = Premium: ganze Saison in einer Anfrage (eventsround liefert 404)
     const TSDB_API = 'https://api.ligazeit.de/v1';
     const TSDB_FREE = false;
+    // Livescores (nur Premium, v2): Spielstand und Minute laufender Spiele.
+    // Während Live-Spielen wird nur dieser Feed abgefragt; die ganze Saison
+    // nur alle paar Minuten oder wenn ein Spiel aus dem Feed verschwindet.
+    const TSDB_LIVE_API = 'https://api.ligazeit.de/v2/livescore/';
+    const TSDB_SEASON_REFRESH_MS = 10 * 60000;
     const TSDB_SEASON = `${SEASON}-${SEASON + 1}`;
 
     // ━━━ State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1283,6 +1288,8 @@
       source: 'openligadb',    // gewählte Datenquelle
       loadedRounds: new Set(), // TheSportsDB gratis: bereits geladene Spieltage
       goalCache: new Map(),    // TheSportsDB: Spielverlauf je Spiel und Spielstand
+      live: new Map(),         // TheSportsDB Premium: Livescore je Spiel (idEvent)
+      seasonLoadedAt: 0,       // TheSportsDB Premium: Zeitpunkt der letzten Saisonabfrage
       tableNote: ''
     };
 
@@ -1354,7 +1361,7 @@
         || (!status && hasScore && Date.now() - Date.parse(when) > MATCH_DUR_MS));
       return {
         src: 'tsdb', matchID: id, matchDateTime: when,
-        matchIsFinished: finished, matchIsOff: !!offLabel, offLabel,
+        matchIsFinished: finished, seasonFinished: finished, matchIsOff: !!offLabel, offLabel,
         team1: { teamName: e.strHomeTeam, shortName: e.strHomeTeam, teamIconUrl: tsdbBadge(e.strHomeTeamBadge) },
         team2: { teamName: e.strAwayTeam, shortName: e.strAwayTeam, teamIconUrl: tsdbBadge(e.strAwayTeamBadge) },
         matchResults: hasScore ? [{ resultOrderID: 2, pointsTeam1: s1, pointsTeam2: s2 }] : [],
@@ -1377,6 +1384,61 @@
     async function tsdbLoadSeason() {
       const j = await tsdb(`/eventsseason.php?id=${tsdbLeagueId()}&s=${TSDB_SEASON}`);
       return tsdbMatches(tsdbList(j, 'events'));
+    }
+
+    // Premium: Saison laden und Zeitpunkt merken.
+    async function tsdbReloadSeason() {
+      const matches = await tsdbLoadSeason();
+      S.seasonLoadedAt = Date.now();
+      return matches;
+    }
+
+    const TSDB_LIVE_ENDED = new Set(['ft', 'aet', 'pen', 'match finished', 'after extra time', 'after penalties']);
+    const TSDB_LIVE_PENDING = new Set(['', 'ns', 'not started', 'tbd']);
+
+    // Livescores der Liga in S.live übernehmen. Liefert true, wenn ein bisher
+    // laufendes Spiel nicht mehr im Feed steht; dann sollte die Saison neu
+    // geladen werden, damit das Endergebnis aus den regulären Daten kommt.
+    async function tsdbLoadLive() {
+      const r = await fetch(TSDB_LIVE_API + tsdbLeagueId());
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      const feed = tsdbList(text.trim() ? JSON.parse(text) : {}, 'livescore').filter(tsdbOwn);
+      const seen = new Set();
+      for (const e of feed) {
+        const id = Number(e.idEvent);
+        if (!Number.isInteger(id)) continue;
+        const status = String(e.strStatus || '').trim().toLowerCase();
+        const progress = String(e.strProgress ?? '').trim();
+        seen.add(id);
+        S.live.set(id, {
+          s1: tsdbScore(e.intHomeScore), s2: tsdbScore(e.intAwayScore), status,
+          minute: /^\d{1,3}(\+\d{1,2})?$/.test(progress) ? progress : '',
+          ended: TSDB_LIVE_ENDED.has(status)
+        });
+      }
+      let dropped = false;
+      for (const [id, v] of S.live) {
+        if (!seen.has(id) && !v.ended) { v.ended = true; dropped = true; }
+      }
+      return dropped;
+    }
+
+    // Livescore auf ein Spiel anwenden. Ist das Spiel laut Saisondaten
+    // beendet, haben die regulären Daten Vorrang und der Eintrag entfällt.
+    function applyLive(m) {
+      const id = Number(m.matchID), v = S.live.get(id);
+      m.liveStatus = ''; m.liveMinute = '';
+      if (!v) return;
+      if (v.ended && m.seasonFinished) { S.live.delete(id); return; }
+      if (v.s1 !== null && v.s2 !== null) {
+        m.matchResults = [{ resultOrderID: 2, pointsTeam1: v.s1, pointsTeam2: v.s2 }];
+      }
+      if (v.ended) { m.matchIsFinished = true; return; }
+      if (TSDB_LIVE_PENDING.has(v.status)) return;
+      m.matchIsFinished = false;
+      m.liveStatus = v.status;
+      m.liveMinute = v.minute;
     }
 
     // Spieltag des nächsten Spiels, sonst des letzten Spiels dieser Saison.
@@ -1528,6 +1590,7 @@
 
     function isLive(m) {
       if (m.matchIsFinished || m.matchIsOff) return false;
+      if (m.liveStatus) return true;
       const ms = Date.now() - new Date(m.matchDateTime).getTime();
       return ms >= 0 && ms <= MATCH_DUR_MS;
     }
@@ -1535,6 +1598,8 @@
     function getLiveMatches() { return S.matches.filter(isLive); }
 
     function matchMinute(m) {
+      if (m.liveStatus === 'ht') return 'HZ';
+      if (m.liveMinute) return m.liveMinute + "'";
       const ms = Date.now() - new Date(m.matchDateTime).getTime();
       const min = Math.floor(ms / 60000);
       if (min <= 45) return min + "'";
@@ -1661,7 +1726,7 @@
     // Spiele übernehmen; bei TheSportsDB gratis sind alle Spieltage als Reiter
     // sichtbar, auch wenn sie erst beim Anklicken geladen werden.
     function applyMatches(matches) {
-      if (src() === 'thesportsdb') matches.forEach(applyGoalCache);
+      if (src() === 'thesportsdb') matches.forEach(m => { applyLive(m); applyGoalCache(m); });
       S.matches = matches;
       S.mdays = groupByDay(matches);
       const n = src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
@@ -1673,12 +1738,16 @@
     // Erstes Laden einer Liga; liefert den aktuellen Spieltag.
     async function loadInitial() {
       S.loadedRounds = new Set();
+      S.live = new Map();
       if (src() === 'openligadb') {
         applyMatches(await loadMatches());
         return loadCurrentGroup(S.order);
       }
       if (!TSDB_FREE) {
-        applyMatches(await tsdbLoadSeason());
+        applyMatches(await tsdbReloadSeason());
+        if (getLiveMatches().length) {
+          try { await tsdbLoadLive(); applyMatches(S.matches); } catch (e) { }
+        }
         return tsdbCurrentRound();
       }
       // Gratis: vermuteten Spieltag und den davor laden, damit ein noch
@@ -1696,7 +1765,12 @@
     async function refreshData(silent) {
       try {
         if (src() === 'openligadb') applyMatches(await loadMatches());
-        else if (!TSDB_FREE) applyMatches(await tsdbLoadSeason());
+        else if (!TSDB_FREE) {
+          let reload = Date.now() - S.seasonLoadedAt > TSDB_SEASON_REFRESH_MS;
+          try { if (await tsdbLoadLive()) reload = true; }
+          catch (e) { reload = true; }          // Feed nicht erreichbar: Saisondaten nehmen
+          applyMatches(reload ? await tsdbReloadSeason() : S.matches);
+        }
         else {
           // Gratis: nur Spieltage mit Live-Spielen und den angezeigten neu laden
           const rounds = new Set(getLiveMatches().map(m => m.group.groupOrderID));
