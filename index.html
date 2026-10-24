@@ -1189,6 +1189,9 @@
           <option value="maenner2">2. Bundesliga</option>
           <option value="maenner3">3. Liga</option>
         </optgroup>
+        <optgroup label="Handball">
+          <option value="handball1">Handball-Bundesliga</option>
+        </optgroup>
       </select>
       <div class="view-toggle" id="viewToggle">
         <button class="view-btn live-btn" data-view="live"><span class="live-dot"></span> Live</button>
@@ -1255,7 +1258,20 @@
       maenner1: { keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
       maenner2: { keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
       maenner3: { keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+      // Nur bei TheSportsDB geführt (OpenLigaDB hat keinen Handball).
+      handball1: { keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
     };
+
+    // Spielzeiten je Sportart: Halbzeitlänge, Pause und wie lange ein Spiel
+    // nach Anpfiff ohne Live-Daten als laufend gilt (inkl. Nachspielzeit bzw.
+    // angehaltener Uhr bei Auszeiten im Handball).
+    const SPORTS = {
+      fussball: { half: 45, pause: 15, durMin: 130, goalDetails: true },
+      handball: { half: 30, pause: 15, durMin: 95, goalDetails: false },
+    };
+    function sportCfg() { return SPORTS[leagueCfg().sport || 'fussball']; }
+    function matchDurMs() { return sportCfg().durMin * 60000; }
+    function isFootball() { return (leagueCfg().sport || 'fussball') === 'fussball'; }
 
     const SOURCES = {
       openligadb: { label: 'OpenLigaDB', url: 'https://www.openligadb.de' },
@@ -1264,7 +1280,6 @@
 
     const API = 'https://api.openligadb.de';
     const LIVE_POLL_MS = 60000;
-    const MATCH_DUR_MS = 130 * 60000;
 
     const NOW = new Date();
     const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
@@ -1297,7 +1312,11 @@
     function leagueKey() { return S.keyCache[S.league] || leagueCfg().keys[0]; }
 
     // Tatsächlich genutzte Quelle: TheSportsDB nur, wenn die Liga dort geführt wird.
-    function src() { return S.source === 'thesportsdb' && leagueCfg().tsdb ? 'thesportsdb' : 'openligadb'; }
+    function src() {
+      const l = leagueCfg();
+      if (l.tsdbOnly) return 'thesportsdb';
+      return S.source === 'thesportsdb' && l.tsdb ? 'thesportsdb' : 'openligadb';
+    }
     function tsdbFreeMode() { return src() === 'thesportsdb' && TSDB_FREE; }
 
     async function api(path) {
@@ -1355,7 +1374,7 @@
       const hasScore = s1 !== null && s2 !== null;
       const offLabel = TSDB_OFF[status] || (String(e.strPostponed || '').toLowerCase() === 'yes' ? 'Verlegt' : '');
       const finished = !offLabel && (TSDB_FINISHED.has(status)
-        || (!status && hasScore && Date.now() - Date.parse(when) > MATCH_DUR_MS));
+        || (!status && hasScore && Date.now() - Date.parse(when) > matchDurMs()));
       return {
         src: 'tsdb', matchID: id, matchDateTime: when,
         matchIsFinished: finished, seasonFinished: finished, matchIsOff: !!offLabel, offLabel,
@@ -1455,7 +1474,7 @@
     function tsdbCurrentRound(fallback) {
       const now = Date.now();
       const next = S.matches
-        .filter(m => !m.matchIsFinished && !m.matchIsOff && Date.parse(m.matchDateTime) + MATCH_DUR_MS > now)
+        .filter(m => !m.matchIsFinished && !m.matchIsOff && Date.parse(m.matchDateTime) + matchDurMs() > now)
         .sort((a, b) => Date.parse(a.matchDateTime) - Date.parse(b.matchDateTime))[0];
       return next ? next.group.groupOrderID : (fallback ?? S.order[S.order.length - 1] ?? 1);
     }
@@ -1655,7 +1674,7 @@
       if (m.matchIsFinished || m.matchIsOff) return false;
       if (m.liveStatus) return true;
       const ms = Date.now() - new Date(m.matchDateTime).getTime();
-      return ms >= 0 && ms <= MATCH_DUR_MS;
+      return ms >= 0 && ms <= matchDurMs();
     }
 
     function getLiveMatches() { return S.matches.filter(isLive); }
@@ -1663,12 +1682,14 @@
     function matchMinute(m) {
       if (m.liveStatus === 'ht') return 'HZ';
       if (m.liveMinute) return m.liveMinute + "'";
-      const ms = Date.now() - new Date(m.matchDateTime).getTime();
-      const min = Math.floor(ms / 60000);
-      if (min <= 45) return min + "'";
-      if (min > 45 && min <= 60) return "HZ";
-      if (min > 60) return (min - 15) + "'";
-      return min + "'";
+      // Ohne Live-Daten aus der Anstoßzeit geschätzt.
+      const { half, pause } = sportCfg();
+      const min = Math.floor((Date.now() - new Date(m.matchDateTime).getTime()) / 60000);
+      if (min <= half) return min + "'";
+      if (min <= half + pause) return 'HZ';
+      // Handball: die Uhr steht bei Auszeiten, daher nicht über das Spielende hinaus schätzen.
+      const played = min - pause;
+      return (isFootball() ? played : Math.min(played, 2 * half)) + "'";
     }
 
     function fmtTime(d) { return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
@@ -1725,7 +1746,10 @@
     function teamIcon(t) {
       const orig = safeIconUrl(t.teamIconUrl);
       const first = ICON_OVERRIDES[orig] || orig;
-      const attrs = `data-orig="${esc(orig)}" data-club="${esc(clubKey(t.teamName))}"`;
+      // Der Rückgriff auf Wappen der Fußball-Männerteams passt nur zu Fußball
+      // (sonst bekäme z. B. der HSV Hamburg im Handball das Fußballwappen).
+      const club = isFootball() ? clubKey(t.teamName) : '';
+      const attrs = `data-orig="${esc(orig)}" data-club="${esc(club)}"`;
       if (!first) {
         // Kein Icon von der API: gleich beim Männerteam nachsehen.
         return `<img class="team-icon" alt="" ${attrs} data-stage="0" style="visibility:hidden" src="data:," onerror="iconFail(this)">`;
@@ -1954,7 +1978,7 @@
       }
       // Nur begonnene Spiele haben einen Spielverlauf zum Aufklappen.
       const id = Number(m.matchID);
-      const canOpen = Number.isInteger(id) && (m.matchIsFinished || li || !!r);
+      const canOpen = sportCfg().goalDetails && Number.isInteger(id) && (m.matchIsFinished || li || !!r);
       const open = canOpen && S.openMatches.has(id);
       const chev = canOpen ? '<span class="chev" aria-hidden="true"></span>' : '';
       const attrs = canOpen
@@ -2185,7 +2209,8 @@
       $('sourceLink').textContent = cur.label;
       $('sourceLink').href = cur.url;
       $('sourceNote').textContent = S.source === 'thesportsdb' && src() !== 'thesportsdb'
-        ? ' (TheSportsDB führt diese Liga nicht)' : '';
+        ? ' (TheSportsDB führt diese Liga nicht)'
+        : S.source === 'openligadb' && src() !== 'openligadb' ? ' (OpenLigaDB führt diese Liga nicht)' : '';
     }
 
     $('sourceSelect').addEventListener('change', e => {
