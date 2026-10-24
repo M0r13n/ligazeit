@@ -1183,11 +1183,17 @@
         <optgroup label="Frauen">
           <option value="frauen1">Frauen-Bundesliga</option>
           <option value="frauen2">2. Frauen-Bundesliga</option>
+          <option value="wsl">Women's Super League</option>
+          <option value="premiereligue">Première Ligue</option>
+          <option value="uwcl">Champions League</option>
+          <option value="natf">Nationalmannschaft</option>
         </optgroup>
         <optgroup label="Männer">
           <option value="maenner1">Bundesliga</option>
           <option value="maenner2">2. Bundesliga</option>
           <option value="maenner3">3. Liga</option>
+          <option value="ucl">Champions League</option>
+          <option value="natm">Nationalmannschaft</option>
         </optgroup>
         <optgroup label="Handball">
           <option value="handball1">Handball-Bundesliga</option>
@@ -1258,7 +1264,15 @@
       maenner1: { keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
       maenner2: { keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
       maenner3: { keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
-      // Nur bei TheSportsDB geführt (OpenLigaDB hat keinen Handball).
+      // Nur bei TheSportsDB geführt.
+      wsl: { keys: [], tsdb: { id: 4849, rounds: 26 }, tsdbOnly: true, label: 'WSL', fullLabel: "Women's Super League", title: "⚽ Women's Super League", gender: 'frauen' },
+      premiereligue: { keys: [], tsdb: { id: 5203, rounds: 22 }, tsdbOnly: true, label: 'Première Ligue', fullLabel: 'Première Ligue', title: '⚽ Première Ligue', gender: 'frauen' },
+      // Pokalwettbewerbe: rounds = Spieltage der Ligaphase, danach K.-o.-Runden (CUP_ROUNDS).
+      ucl: { keys: [], tsdb: { id: 4480, rounds: 8 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League', title: '⚽ Champions League', gender: 'maenner' },
+      uwcl: { keys: [], tsdb: { id: 4889, rounds: 6 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League der Frauen', title: '⚽ Champions League der Frauen', gender: 'frauen' },
+      // Nationalmannschaften: letzte und nächste Spiele über alle Wettbewerbe.
+      natm: { keys: [], tsdb: { id: null, rounds: 0 }, team: 133907, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft', title: '⚽ Nationalmannschaft', gender: 'maenner' },
+      natf: { keys: [], tsdb: { id: null, rounds: 0 }, team: 136805, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft der Frauen', title: '⚽ Nationalmannschaft der Frauen', gender: 'frauen' },
       handball1: { keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
     };
 
@@ -1271,6 +1285,26 @@
     };
     function sportCfg() { return SPORTS[leagueCfg().sport || 'fussball']; }
     function matchDurMs() { return sportCfg().durMin * 60000; }
+    // Rundennummern bei TheSportsDB für Pokalwettbewerbe (aus der Saison 2025/26
+    // der Champions League abgelesen). 400 und 0 sind Qualifikation/Play-off.
+    const CUP_ROUNDS = {
+      32: { short: 'PO', long: 'K.-o.-Play-offs', order: 101 },
+      16: { short: 'AF', long: 'Achtelfinale', order: 102 },
+      125: { short: 'VF', long: 'Viertelfinale', order: 103 },
+      150: { short: 'HF', long: 'Halbfinale', order: 104 },
+      200: { short: 'F', long: 'Finale', order: 105 },
+    };
+    // Nationalmannschaften: zwei Reiter statt Spieltagen.
+    const TEAM_ROUNDS = { 1: { short: 'Zuletzt', long: 'Letzte Spiele' }, 2: { short: 'Demnächst', long: 'Nächste Spiele' } };
+    function roundInfo(n) {
+      const l = leagueCfg();
+      if (l.team && TEAM_ROUNDS[n]) return TEAM_ROUNDS[n];
+      if (l.cup && CUP_ROUNDS[n]) return CUP_ROUNDS[n];
+      return { short: String(n), long: `${n}. Spieltag` };
+    }
+    function roundOrder(n) { const c = leagueCfg().cup && CUP_ROUNDS[n]; return c ? c.order : n; }
+    function roundLabel() { const l = leagueCfg(); return l.team ? 'Spiele' : l.cup ? 'Runde' : 'Spieltag'; }
+
     function isFootball() { return (leagueCfg().sport || 'fussball') === 'fussball'; }
 
     const SOURCES = {
@@ -1366,8 +1400,9 @@
       return x ? x.replace(/\/(tiny|small|medium)$/, '') + '/tiny' : '';
     }
 
-    function tsdbMatch(e) {
-      const id = Number(e.idEvent), round = Number(e.intRound), when = tsdbTime(e);
+    function tsdbMatch(e, groupOverride) {
+      const id = Number(e.idEvent), when = tsdbTime(e);
+      const round = groupOverride ?? Number(e.intRound);
       if (!Number.isInteger(id) || !Number.isInteger(round) || round < 1 || !when) return null;
       const status = String(e.strStatus || '').trim().toLowerCase();
       const s1 = tsdbScore(e.intHomeScore), s2 = tsdbScore(e.intAwayScore);
@@ -1381,13 +1416,51 @@
         team1: { teamName: e.strHomeTeam, shortName: e.strHomeTeam, teamIconUrl: tsdbBadge(e.strHomeTeamBadge) },
         team2: { teamName: e.strAwayTeam, shortName: e.strAwayTeam, teamIconUrl: tsdbBadge(e.strAwayTeamBadge) },
         matchResults: hasScore ? [{ resultOrderID: 2, pointsTeam1: s1, pointsTeam2: s2 }] : [],
-        group: { groupOrderID: round, groupName: `${round}. Spieltag` },
+        group: { groupOrderID: round, groupName: roundInfo(round).long },
+        competition: e.strLeague || '',
         goals: null
       };
     }
 
     function tsdbMatches(events) {
-      return events.filter(tsdbOwn).map(tsdbMatch).filter(Boolean);
+      const matches = events.filter(tsdbOwn).map(e => tsdbMatch(e)).filter(Boolean);
+      return leagueCfg().cup ? cupMainPhase(matches) : matches;
+    }
+
+    // Pokal: nur Ligaphase und K.-o.-Runden. In der laufenden Saison führt
+    // TheSportsDB die Qualifikation noch als Runde 0–3 (erst später als 400);
+    // diese Spiele liegen Wochen vor den gleich nummerierten Ligaspieltagen und
+    // werden über den zeitlichen Abstand aussortiert.
+    function cupMainPhase(matches) {
+      const phase = leagueCfg().tsdb.rounds;
+      const keep = matches.filter(m => {
+        const r = m.group.groupOrderID;
+        return (r >= 1 && r <= phase) || CUP_ROUNDS[r];
+      });
+      const latest = {};
+      for (const m of keep) {
+        const r = m.group.groupOrderID, t = Date.parse(m.matchDateTime);
+        latest[r] = Math.max(latest[r] || 0, t);
+      }
+      return keep.filter(m => Date.parse(m.matchDateTime) >= latest[m.group.groupOrderID] - 21 * 864e5);
+    }
+
+    // Nationalmannschaft: letzte und nächste Spiele, unabhängig vom Wettbewerb.
+    async function tsdbLoadTeam() {
+      const id = leagueCfg().team;
+      const [last, next] = await Promise.all([
+        tsdb(`/eventslast.php?id=${id}`), tsdb(`/eventsnext.php?id=${id}`)]);
+      const seen = new Set(), out = [];
+      for (const e of [...tsdbList(last, 'results'), ...tsdbList(next, 'events')]) {
+        if (seen.has(e.idEvent)) continue;
+        seen.add(e.idEvent);
+        const m = tsdbMatch(e, 1);
+        if (!m) continue;
+        const r = m.matchIsFinished || m.matchIsOff && Date.parse(m.matchDateTime) < Date.now() ? 1 : 2;
+        m.group = { groupOrderID: r, groupName: TEAM_ROUNDS[r].long };
+        out.push(m);
+      }
+      return out;
     }
 
     // Gratis-Schlüssel: liefert einen kompletten Spieltag.
@@ -1831,7 +1904,7 @@
       const n = src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
       const all = new Set(Object.keys(S.mdays).map(Number));
       for (let i = 1; i <= n; i++) all.add(i);
-      S.order = [...all].sort((a, b) => a - b);
+      S.order = [...all].sort((a, b) => roundOrder(a) - roundOrder(b));
     }
 
     // Erstes Laden einer Liga; liefert den aktuellen Spieltag.
@@ -1841,6 +1914,10 @@
       if (src() === 'openligadb') {
         applyMatches(await loadMatches());
         return loadCurrentGroup(S.order);
+      }
+      if (leagueCfg().team) {
+        applyMatches(await tsdbLoadTeam());
+        return S.mdays[2] ? 2 : 1;
       }
       if (!TSDB_FREE) {
         applyMatches(await tsdbReloadSeason());
@@ -1864,6 +1941,7 @@
     async function refreshData(silent) {
       try {
         if (src() === 'openligadb') applyMatches(await loadMatches());
+        else if (leagueCfg().team) applyMatches(await tsdbLoadTeam());
         else if (!TSDB_FREE) {
           let reload = Date.now() - S.seasonLoadedAt > TSDB_SEASON_REFRESH_MS;
           try { if (await tsdbLoadLive()) reload = true; }
@@ -1902,17 +1980,21 @@
     function renderLeagueSwitch() {
       $('leagueSelect').value = S.league;
       $('pageTitle').textContent = leagueCfg().title;
+      const noTable = !!leagueCfg().team;
+      document.querySelector('.view-btn[data-view="table"]').classList.toggle('hidden', noTable);
+      if (noTable && S.view === 'table') switchView('schedule');
     }
 
     // ━━━ Render: Tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function renderTabs() {
       const c = $('tabsMD');
-      let h = '<span class="md-label">Spieltag</span>';
+      let h = `<span class="md-label">${roundLabel()}</span>`;
       for (const n of S.order) {
         const cls = ['md-tab'];
         if (n === S.sel) cls.push('active');
         if (n === S.cur) cls.push('current');
-        h += `<button class="${cls.join(' ')}" data-md="${n}">${n}</button>`;
+        const ri = roundInfo(n);
+        h += `<button class="${cls.join(' ')}" data-md="${n}" title="${esc(ri.long)}">${esc(ri.short)}</button>`;
       }
       c.innerHTML = h;
       requestAnimationFrame(() => {
@@ -1926,13 +2008,15 @@
       const el = $('viewSchedule');
       const md = S.mdays[S.sel];
       if (!md || !md.matches.length) {
-        el.innerHTML = '<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Spiele</h3><p>Für diesen Spieltag liegen keine Daten vor.</p></div></div>';
+        const what = leagueCfg().team ? 'Derzeit' : leagueCfg().cup ? 'Für diese Runde' : 'Für diesen Spieltag';
+        el.innerHTML = `<div class="card"><div class="state-msg"><div class="ico">📋</div><h3>Keine Spiele</h3><p>${what} liegen keine Daten vor.</p></div></div>`;
         return;
       }
       const fin = md.matches.filter(m => m.matchIsFinished).length;
       const byDate = new Map();
       for (const m of md.matches) {
-        const k = fmtDate(m.matchDateTime).full;
+        let k = fmtDate(m.matchDateTime).full;
+        if (leagueCfg().team && m.competition) k += ` · ${m.competition}`;
         if (!byDate.has(k)) byDate.set(k, []);
         byDate.get(k).push(m);
       }

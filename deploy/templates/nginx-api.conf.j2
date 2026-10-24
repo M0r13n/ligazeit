@@ -77,7 +77,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000" always;
 
     # v1: nur die Endpunkte, die die Seite braucht
-    location ~ ^/v1/(eventsseason|eventsround|eventsnextleague|eventspastleague|lookuptable|lookuptimeline)\.php$ {
+    location ~ ^/v1/(eventsseason|eventsround|eventsnextleague|eventspastleague|eventslast|eventsnext|lookuptable|lookuptimeline)\.php$ {
         limit_except GET { deny all; }
         limit_req zone=tsdb_perip burst=20 nodelay;
         proxy_pass https://www.thesportsdb.com/api/v1/json/$tsdb_key/$1.php$is_args$args;
