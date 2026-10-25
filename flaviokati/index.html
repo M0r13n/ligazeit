@@ -211,7 +211,41 @@
       font-weight: 600
     }
 
+    /* Tennisball statt Emoji */
+    .ball {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0
+    }
+
+    .header-left h1 {
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    /* Platzlinien von oben, dezent hinter dem Stand; das Netz liegt
+       genau zwischen den Spalten (mittlere Spalte ist das Netz). */
+    .court {
+      position: relative;
+      padding: 18px 20px
+    }
+
+    .court svg {
+      position: absolute;
+      inset: 14px 20px;
+      width: calc(100% - 40px);
+      height: calc(100% - 28px);
+      color: var(--border);
+      pointer-events: none
+    }
+
+    .court .net {
+      color: var(--text3)
+    }
+
     .duel {
+      position: relative;
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
@@ -219,14 +253,14 @@
     }
 
     .duel th {
-      padding: 18px 12px 6px;
+      padding: 22px 12px 4px;
       font-size: 15px;
       font-weight: 600;
       color: var(--text2)
     }
 
     .duel td {
-      padding: 4px 12px 22px;
+      padding: 2px 12px 26px;
       font-size: 40px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -279,7 +313,11 @@
   <div class="accent-bar"></div>
   <header class="header">
     <div class="header-left">
-      <h1>⚽ Flavio gegen Kati</h1>
+      <h1><svg class="ball" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10.5" fill="#d4e43f" stroke="#a9b82a" stroke-width="1" />
+          <path d="M4.2 5.2c3.6 2.9 3.6 10.7 0 13.6M19.8 5.2c-3.6 2.9-3.6 10.7 0 13.6" fill="none" stroke="#fff"
+            stroke-width="1.6" stroke-linecap="round" />
+        </svg>Flavio gegen Kati</h1>
       <span class="badge">Duell</span>
     </div>
     <div class="header-actions">
@@ -305,6 +343,16 @@
       <div class="card-header">
         <h2>Aktueller Stand</h2>
       </div>
+      <div class="court">
+        <svg viewBox="0 0 2377 1097" preserveAspectRatio="none" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke">
+            <rect x="0" y="0" width="2377" height="1097" vector-effect="non-scaling-stroke" />
+            <path d="M0 137H2377M0 960H2377M548.5 137V960M1828.5 137V960M548.5 548.5H1828.5M0 548.5H40M2337 548.5H2377"
+              vector-effect="non-scaling-stroke" />
+          </g>
+          <path class="net" d="M1188.5 0V1097" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"
+            vector-effect="non-scaling-stroke" />
+        </svg>
       <!-- Stand hier anpassen -->
       <table class="duel">
         <thead>
@@ -322,6 +370,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </main>
 
