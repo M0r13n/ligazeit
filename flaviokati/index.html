@@ -272,6 +272,24 @@
       color: var(--text3)
     }
 
+    /* Fliegende Bälle (Klick auf "Flavio") */
+    .flying-ball {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 56px;
+      height: 56px;
+      z-index: 200;
+      cursor: pointer;
+      will-change: transform;
+      filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .25))
+    }
+
+    .flying-ball.fade {
+      transition: opacity .6s ease;
+      opacity: 0
+    }
+
     .footer {
       text-align: center;
       padding: 24px;
@@ -357,7 +375,7 @@
       <table class="duel">
         <thead>
           <tr>
-            <th scope="col">Flavio</th>
+            <th scope="col" id="flavio">Flavio</th>
             <th scope="col" class="sep" aria-hidden="true"></th>
             <th scope="col">Kati</th>
           </tr>
@@ -376,7 +394,87 @@
 
   <footer class="footer"><a href="/">Zurück zu Ligazeit</a></footer>
 
+  <!-- Vorlage für die fliegenden Bälle -->
+  <template id="ballTpl">
+    <svg class="flying-ball" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="10.5" fill="#d4e43f" stroke="#a9b82a" stroke-width="1" />
+      <path d="M4.2 5.2c3.6 2.9 3.6 10.7 0 13.6M19.8 5.2c-3.6 2.9-3.6 10.7 0 13.6" fill="none" stroke="#fff"
+        stroke-width="1.6" stroke-linecap="round" />
+    </svg>
+  </template>
+
   <script>
+    // Easter Egg im Easter Egg: Klick auf "Flavio" schickt einen Tennisball
+    // wie das alte DVD-Logo über die Seite. Klick auf den Ball oder Escape beendet.
+    (function () {
+      var MAX_BALLS = 10, SPEED = 260, SIZE = 56;   // px/s, px
+      var balls = [], running = false, last = 0;
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var tpl = document.getElementById('ballTpl');
+
+      function makeBall() {
+        var el = tpl.content.firstElementChild.cloneNode(true);
+        document.body.appendChild(el);
+        return el;
+      }
+
+      function remove(b) {
+        balls = balls.filter(function (x) { return x !== b; });
+        b.el.classList.add('fade');
+        setTimeout(function () { b.el.remove(); }, 600);
+      }
+
+      function draw(b) {
+        var sq = b.squash > 0 ? 1 - 0.18 * b.squash : 1;     // kurz stauchen nach dem Aufprall
+        var sx = b.squashAxis === 'x' ? sq : 2 - sq, sy = b.squashAxis === 'x' ? 2 - sq : sq;
+        b.el.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px) rotate(' + b.rot + 'deg) scale(' + sx + ',' + sy + ')';
+      }
+
+      function step(t) {
+        var dt = Math.min((t - last) / 1000, 0.05);
+        last = t;
+        var w = window.innerWidth - SIZE, h = window.innerHeight - SIZE;
+        balls.forEach(function (b) {
+          b.x += b.vx * dt; b.y += b.vy * dt;
+          if (b.x <= 0 || b.x >= w) { b.vx = -b.vx; b.x = Math.max(0, Math.min(w, b.x)); b.squash = 1; b.squashAxis = 'x'; }
+          if (b.y <= 0 || b.y >= h) { b.vy = -b.vy; b.y = Math.max(0, Math.min(h, b.y)); b.squash = 1; b.squashAxis = 'y'; }
+          b.squash = Math.max(0, b.squash - dt * 6);
+          b.rot += (b.vx > 0 ? 1 : -1) * SPEED * dt * 360 / (Math.PI * SIZE);   // rollt passend zur Strecke
+          draw(b);
+        });
+        if (balls.length) requestAnimationFrame(step); else running = false;
+      }
+
+      function launch(fromEl) {
+        if (reduceMotion) {                     // ohne Animation: kurz zeigen, dann ausblenden
+          var el = makeBall();
+          el.style.transform = 'translate(' + (window.innerWidth - SIZE) / 2 + 'px,' + (window.innerHeight - SIZE) / 2 + 'px)';
+          setTimeout(function () { el.classList.add('fade'); setTimeout(function () { el.remove(); }, 600); }, 1500);
+          return;
+        }
+        if (balls.length >= MAX_BALLS) return;
+        var r = fromEl.getBoundingClientRect();
+        var angle = (0.2 + Math.random() * 0.35) * Math.PI;   // schräg, nie ganz waagerecht oder senkrecht
+        var b = {
+          el: makeBall(),
+          x: Math.max(0, Math.min(window.innerWidth - SIZE, r.left + r.width / 2 - SIZE / 2)),
+          y: Math.max(0, Math.min(window.innerHeight - SIZE, r.top + r.height / 2 - SIZE / 2)),
+          vx: SPEED * Math.cos(angle) * (Math.random() < .5 ? -1 : 1),
+          vy: -SPEED * Math.sin(angle),
+          rot: 0, squash: 0, squashAxis: 'x'
+        };
+        b.el.addEventListener('click', function () { remove(b); });
+        balls.push(b);
+        draw(b);
+        if (!running) { running = true; last = performance.now(); requestAnimationFrame(step); }
+      }
+
+      document.getElementById('flavio').addEventListener('click', function (e) { launch(e.currentTarget); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') balls.slice().forEach(remove);
+      });
+    })();
+
     (function () {
       var KEY = 'bl-theme';
       var btn = document.getElementById('btnTheme');
