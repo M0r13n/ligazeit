@@ -458,14 +458,37 @@
         b.el.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px) rotate(' + b.rot + 'deg) scale(' + sx + ',' + sy + ')';
       }
 
+      // Zwei Bälle berühren sich: elastischer Stoß gleich schwerer Bälle, d. h. sie
+      // tauschen die Geschwindigkeit entlang der Verbindungslinie. Danach wieder
+      // auf DVD-Tempo setzen, damit keiner nach vielen Stößen fast stehen bleibt.
+      function collide(a, b) {
+        var dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+        if (d >= SIZE) return;
+        var nx, ny;
+        if (d < 0.01) { var r = Math.random() * 2 * Math.PI; nx = Math.cos(r); ny = Math.sin(r); }   // exakt übereinander
+        else { nx = dx / d; ny = dy / d; }
+        var push = (SIZE - d) / 2;                              // Überlappung je zur Hälfte auflösen
+        a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
+        var rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+        if (rel <= 0) return;                                   // laufen schon auseinander
+        a.vx -= rel * nx; a.vy -= rel * ny; b.vx += rel * nx; b.vy += rel * ny;
+        [a, b].forEach(function (c) {
+          var v = Math.hypot(c.vx, c.vy) || 1;
+          c.vx *= SPEED / v; c.vy *= SPEED / v;
+          c.squash = 1; c.squashAxis = Math.abs(nx) > Math.abs(ny) ? 'x' : 'y';
+        });
+      }
+
       function step(t) {
         var dt = Math.min((t - last) / 1000, 0.05);
         last = t;
         var w = window.innerWidth - SIZE, h = window.innerHeight - SIZE;
+        balls.forEach(function (b) { b.x += b.vx * dt; b.y += b.vy * dt; });
+        for (var i = 0; i < balls.length; i++)
+          for (var j = i + 1; j < balls.length; j++) collide(balls[i], balls[j]);
         balls.forEach(function (b) {
-          b.x += b.vx * dt; b.y += b.vy * dt;
-          if (b.x <= 0 || b.x >= w) { b.vx = -b.vx; b.x = Math.max(0, Math.min(w, b.x)); b.squash = 1; b.squashAxis = 'x'; }
-          if (b.y <= 0 || b.y >= h) { b.vy = -b.vy; b.y = Math.max(0, Math.min(h, b.y)); b.squash = 1; b.squashAxis = 'y'; }
+          if (b.x <= 0 || b.x >= w) { b.vx = (b.x <= 0 ? 1 : -1) * Math.abs(b.vx); b.x = Math.max(0, Math.min(w, b.x)); b.squash = 1; b.squashAxis = 'x'; }
+          if (b.y <= 0 || b.y >= h) { b.vy = (b.y <= 0 ? 1 : -1) * Math.abs(b.vy); b.y = Math.max(0, Math.min(h, b.y)); b.squash = 1; b.squashAxis = 'y'; }
           b.squash = Math.max(0, b.squash - dt * 6);
           b.rot += (b.vx > 0 ? 1 : -1) * SPEED * dt * 360 / (Math.PI * SIZE);   // rollt passend zur Strecke
           draw(b);
