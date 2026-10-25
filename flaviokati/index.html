@@ -252,15 +252,19 @@
       text-align: center
     }
 
+    /* Namenszeile: 22 + 22 + 4 = 48px hoch. Die Ergebniszeile bekommt unten
+       dieselben 48px (plus ihre 2px oben), damit die Zahlen genau auf der
+       Mittellinie des Platzes stehen, unabhängig von der Schriftgröße. */
     .duel th {
       padding: 22px 12px 4px;
+      line-height: 22px;
       font-size: 15px;
       font-weight: 600;
       color: var(--text2)
     }
 
     .duel td {
-      padding: 2px 12px 26px;
+      padding: 2px 12px 50px;
       font-size: 40px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -268,8 +272,22 @@
     }
 
     .duel .sep {
-      width: 48px;
-      color: var(--text3)
+      width: 48px
+    }
+
+    /* Doppelpunkt als zwei Punkte, exakt in der Platzmitte auf dem Netz.
+       Ein Text-":" sitzt je nach Schrift zu tief. */
+    .colon {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 6px;
+      height: 6px;
+      margin: -11px 0 0 -3px;
+      border-radius: 50%;
+      background: var(--text3);
+      box-shadow: 0 16px 0 var(--text3);
+      pointer-events: none
     }
 
     /* Fliegende Bälle (Klick auf "Flavio") */
@@ -288,6 +306,15 @@
     .flying-ball.fade {
       transition: opacity .6s ease;
       opacity: 0
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap
     }
 
     .footer {
@@ -371,6 +398,7 @@
           <path class="net" d="M1188.5 0V1097" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"
             vector-effect="non-scaling-stroke" />
         </svg>
+        <span class="colon" aria-hidden="true"></span>
       <!-- Stand hier anpassen -->
       <table class="duel">
         <thead>
@@ -383,7 +411,7 @@
         <tbody>
           <tr>
             <td>5</td>
-            <td class="sep" aria-hidden="true">:</td>
+            <td class="sep"><span class="visually-hidden">:</span></td>
             <td>4</td>
           </tr>
         </tbody>
