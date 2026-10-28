@@ -1745,7 +1745,57 @@
         }));
       S.tableNote = TSDB_FREE && table.length && table.length <= 5
         ? 'Mit dem kostenlosen Zugang liefert TheSportsDB nur die ersten 5 Plätze.' : '';
+      // Manche Ligen (z. B. Handball-Bundesliga) hat TheSportsDB ohne
+      // Tabelle. Dann wird die Tabelle aus den beendeten Spielen berechnet.
+      if (!table.length) {
+        const computed = computeStandings(S.matches);
+        if (computed.length) {
+          S.tableNote = 'Tabelle aus den Spielergebnissen berechnet (TheSportsDB liefert keine Tabelle).';
+          return computed;
+        }
+      }
       return table;
+    }
+
+    // Tabelle aus Spielergebnissen aufbauen (Fußball 3 Punkte Sieg, sonst 2;
+    // 1 Punkt Remis). Nur beendete Spiele mit Ergebnis zählen.
+    function computeStandings(matches) {
+      const winPts = isFootball() ? 3 : 2, drawPts = 1;
+      const byTeam = new Map();
+      const team = (t, id) => {
+        const tid = Number(id);
+        const key = Number.isInteger(tid) && tid > 0 ? tid : String(t.teamName || '');
+        if (!byTeam.has(key)) byTeam.set(key, {
+          teamId: Number.isInteger(tid) && tid > 0 ? tid : 0,
+          teamName: t.teamName, shortName: t.shortName || t.teamName,
+          teamIconUrl: t.teamIconUrl || '', matches: 0, won: 0, draw: 0, lost: 0,
+          goals: 0, opponentGoals: 0, points: 0
+        });
+        return byTeam.get(key);
+      };
+      for (const m of matches || []) {
+        const r = finalResult(m);
+        if (!m.matchIsFinished || m.matchIsOff || !r) continue;
+        const s1 = Number(r.pointsTeam1), s2 = Number(r.pointsTeam2);
+        if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0) continue;
+        const h = team(m.team1 || {}, m.team1 && m.team1.teamId);
+        const a = team(m.team2 || {}, m.team2 && m.team2.teamId);
+        h.matches++; a.matches++;
+        h.goals += s1; h.opponentGoals += s2;
+        a.goals += s2; a.opponentGoals += s1;
+        if (s1 > s2) { h.won++; h.points += winPts; a.lost++; }
+        else if (s1 < s2) { a.won++; a.points += winPts; h.lost++; }
+        else { h.draw++; a.draw++; h.points += drawPts; a.points += drawPts; }
+      }
+      return [...byTeam.values()]
+        .map(t => ({ ...t, goalDiff: t.goals - t.opponentGoals }))
+        .sort((a, b) =>
+          b.points - a.points
+          || b.goalDiff - a.goalDiff
+          || b.goals - a.goals
+          || (a.matches - b.matches)
+          || String(a.teamName || '').localeCompare(String(b.teamName || '')))
+        .map((t, i) => ({ ...t, rank: i + 1 }));
     }
 
     // Lädt die Spiele der Saison und merkt sich den funktionierenden Shortcut.
