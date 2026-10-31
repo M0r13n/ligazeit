@@ -452,7 +452,7 @@
 
     .match-row {
       display: grid;
-      grid-template-columns: 56px 1fr 72px 1fr 84px;
+      grid-template-columns: 56px 1fr 72px 1fr 84px 26px;
       align-items: center;
       padding: 11px 20px;
       border-bottom: 1px solid var(--border-light);
@@ -591,6 +591,71 @@
       transform: translateY(1px) rotate(-135deg)
     }
 
+    /* ── Teilen ── */
+    .share-btn {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: none;
+      background: none;
+      color: var(--text3);
+      cursor: pointer;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: color .15s
+    }
+
+    .share-btn:hover {
+      color: var(--primary)
+    }
+
+    .share-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px
+    }
+
+    .share-btn svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .share-btn .ico-check {
+      display: none
+    }
+
+    .share-btn.copied .ico-share {
+      display: none
+    }
+
+    .share-btn.copied .ico-check {
+      display: block
+    }
+
+    .share-btn.copied {
+      color: var(--green)
+    }
+
+    /* Über einen geteilten Link geöffnetes Spiel */
+    .match-row.shared {
+      background: var(--primary-light);
+      box-shadow: inset 3px 0 0 var(--primary);
+      animation: share-glow 1.5s ease-out
+    }
+
+    @keyframes share-glow {
+
+      0% {
+        box-shadow: inset 3px 0 0 var(--primary), 0 0 0 5px var(--primary-light)
+      }
+
+      100% {
+        box-shadow: inset 3px 0 0 var(--primary)
+      }
+    }
+
     .goals {
       padding: 2px 20px 12px 84px;
       background: var(--hover);
@@ -672,6 +737,10 @@
     @media (prefers-reduced-motion: reduce) {
       .chev {
         transition: none
+      }
+
+      .match-row.shared {
+        animation: none
       }
     }
 
@@ -832,7 +901,10 @@
 
     .live-matchday {
       font-size: 12px;
-      color: var(--text3)
+      color: var(--text3);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px
     }
 
     .live-empty {
@@ -1136,6 +1208,11 @@
         display: none
       }
 
+      /* Desktop-Teilen-Button: auf dem Handy sitzt er in der Meta-Zeile */
+      .share-desk {
+        display: none
+      }
+
       .goals {
         padding: 0 16px 12px
       }
@@ -1296,24 +1373,26 @@
     // können sich ändern (Frauen 2026/27: ffb1/ffb2 statt fbl1/fbl2).
     // Es wird der erste Shortcut verwendet, der Spiele liefert.
     // tsdb: Liga-ID bei TheSportsDB und Anzahl Spieltage; null = dort nicht geführt.
+    // code: kurzer Liga-Code für geteilte Links (#g=<code><Quelle><Spiel-ID>).
     const LEAGUES = {
-      frauen1: { keys: ['ffb1', 'fbl1'], tsdb: { id: 5204, rounds: 26 }, label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
-      frauen2: { keys: ['ffb2', 'fbl2'], tsdb: null, label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
-      maenner1: { keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
-      maenner2: { keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
-      maenner3: { keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+      frauen1: { code: 'f1', keys: ['ffb1', 'fbl1'], tsdb: { id: 5204, rounds: 26 }, label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
+      frauen2: { code: 'f2', keys: ['ffb2', 'fbl2'], tsdb: null, label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
+      maenner1: { code: 'm1', keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
+      maenner2: { code: 'm2', keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
+      maenner3: { code: 'm3', keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
       // Nur bei TheSportsDB geführt.
-      wsl: { keys: [], tsdb: { id: 4849, rounds: 26 }, tsdbOnly: true, label: 'WSL', fullLabel: "Women's Super League", title: "⚽ Women's Super League", gender: 'frauen' },
-      premiereligue: { keys: [], tsdb: { id: 5203, rounds: 22 }, tsdbOnly: true, label: 'Première Ligue', fullLabel: 'Première Ligue', title: '⚽ Première Ligue', gender: 'frauen' },
+      wsl: { code: 'wsl', keys: [], tsdb: { id: 4849, rounds: 26 }, tsdbOnly: true, label: 'WSL', fullLabel: "Women's Super League", title: "⚽ Women's Super League", gender: 'frauen' },
+      premiereligue: { code: 'pl', keys: [], tsdb: { id: 5203, rounds: 22 }, tsdbOnly: true, label: 'Première Ligue', fullLabel: 'Première Ligue', title: '⚽ Première Ligue', gender: 'frauen' },
       // Pokalwettbewerbe: rounds = Spieltage der Ligaphase, danach K.-o.-Runden (CUP_ROUNDS).
-      ucl: { keys: [], tsdb: { id: 4480, rounds: 8 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League', title: '⚽ Champions League', gender: 'maenner' },
-      uwcl: { keys: [], tsdb: { id: 4889, rounds: 6 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League der Frauen', title: '⚽ Champions League der Frauen', gender: 'frauen' },
+      ucl: { code: 'cl', keys: [], tsdb: { id: 4480, rounds: 8 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League', title: '⚽ Champions League', gender: 'maenner' },
+      uwcl: { code: 'wcl', keys: [], tsdb: { id: 4889, rounds: 6 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League der Frauen', title: '⚽ Champions League der Frauen', gender: 'frauen' },
       // Nationalmannschaften: letzte und nächste Spiele über alle Wettbewerbe.
-      natm: { keys: [], tsdb: { id: null, rounds: 0 }, team: 133907, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft', title: '⚽ Nationalmannschaft', gender: 'maenner' },
-      natf: { keys: [], tsdb: { id: null, rounds: 0 }, team: 136805, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft der Frauen', title: '⚽ Nationalmannschaft der Frauen', gender: 'frauen' },
-      // Spiele aller mit Stern markierten Teams.
+      natm: { code: 'nm', keys: [], tsdb: { id: null, rounds: 0 }, team: 133907, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft', title: '⚽ Nationalmannschaft', gender: 'maenner' },
+      natf: { code: 'nf', keys: [], tsdb: { id: null, rounds: 0 }, team: 136805, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft der Frauen', title: '⚽ Nationalmannschaft der Frauen', gender: 'frauen' },
+      // Spiele aller mit Stern markierten Teams. Geteilt wird das Spiel seiner
+      // Liga (matchRow übergibt sie über leagueKey), daher ohne eigenen Code.
       meine: { keys: [], tsdb: { id: null, rounds: 0 }, tsdbOnly: true, favorites: true, label: 'Meine Spiele', fullLabel: 'Meine Spiele', title: '⭐ Meine Spiele', gender: 'frauen' },
-      handball1: { keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
+      handball1: { code: 'hb', keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
     };
 
     // Spielzeiten je Sportart: Halbzeitlänge, Pause und wie lange ein Spiel
@@ -1380,7 +1459,8 @@
       live: new Map(),         // TheSportsDB Premium: Livescore je Spiel (idEvent)
       oldbGoals: null,         // OpenLigaDB-Saison als Ersatzquelle für Torschützen
       seasonLoadedAt: 0,       // TheSportsDB Premium: Zeitpunkt der letzten Saisonabfrage
-      tableNote: ''
+      tableNote: '',
+      share: null              // geteiltes Spiel aus einem Link: { lk, source, mid, scrolled }
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1504,6 +1584,7 @@
         // Ergebnis teils monatelang als "nächste Spiele".
         const r = m.matchIsFinished || Date.parse(m.matchDateTime) + durOf(m) < Date.now() ? 1 : 2;
         m.group = { groupOrderID: r, groupName: TEAM_ROUNDS[r].long };
+        m.listView = true;
         out.push(m);
       }
       return out;
@@ -2083,6 +2164,179 @@
       }
     }
 
+    // ━━━ Teilen: Link, Text, geteiltes Spiel öffnen ━━━━━━
+    // Geteilte Spiele stehen im Hash: #g=<Ligacode><Quelle><Spiel-ID>, z. B.
+    // #g=m1t1s3r. Quelle: o = OpenLigaDB, t = TheSportsDB; die Spiel-ID ist
+    // base36-kodiert. Liga, Quelle und Spiel-ID reichen aus, um die richtigen
+    // Daten zu laden – Spieltag und Saison ergeben sich aus dem Spiel, mehr
+    // steht bewusst nicht im Link.
+    const SHARE_LEAGUES = {};
+    for (const [k, l] of Object.entries(LEAGUES)) if (l.code) SHARE_LEAGUES[l.code] = k;
+    const SHARE_CODES = Object.keys(SHARE_LEAGUES).sort((a, b) => b.length - a.length);
+    const isTsdbMatch = m => m.src === 'tsdb';
+
+    function tokenOf(m) {
+      const id = Number(m.matchID);
+      const code = leagueCfg(m.leagueKey || S.league).code;
+      return code && Number.isInteger(id) && id > 0
+        ? code + (isTsdbMatch(m) ? 't' : 'o') + id.toString(36) : null;
+    }
+
+    function parseShareToken(t) {
+      for (const code of SHARE_CODES) {
+        if (!t.startsWith(code)) continue;
+        const q = t[code.length];
+        const mid = parseInt(t.slice(code.length + 1), 36);
+        if ((q === 'o' || q === 't') && Number.isInteger(mid) && mid > 0) {
+          return { lk: SHARE_LEAGUES[code], source: q === 't' ? 'thesportsdb' : 'openligadb', mid };
+        }
+        return null;
+      }
+      return null;
+    }
+
+    function readShareHash() {
+      const m = /^#g=([a-z0-9]+)$/.exec(String(location.hash || '').toLowerCase());
+      return m ? parseShareToken(m[1]) : null;
+    }
+
+    // Führt die Liga die Quelle des Links? (sonst erzwingt src() die richtige)
+    function linkSourceOk(lk, source) {
+      const l = leagueCfg(lk);
+      return source === 'thesportsdb'
+        ? !!(l.tsdbOnly || (l.tsdb && l.tsdb.id))
+        : l.keys.length > 0;
+    }
+
+    // Share-Text: wer, wann, Liga (die wichtigsten Infos zum Spiel).
+    function shareInfo(m) {
+      const lk = m.leagueKey || S.league, l = leagueCfg(lk);
+      const d = fmtDate(m.matchDateTime);
+      const nm = t => t.teamName || t.shortName || '';
+      const who = `${nm(m.team1)} – ${nm(m.team2)}`;
+      const when = m.matchIsOff ? m.offLabel : `${d.wd}, ${d.dd} · ${d.tm} Uhr`;
+      // Listen (Nationalmannschaft, Meine Spiele): Wettbewerb statt Spieltag.
+      const ctx = m.listView ? (m.competition || l.fullLabel)
+        : `${l.fullLabel} · ${roundInfo(m.group.groupOrderID, lk).long}`;
+      return { who, when, ctx };
+    }
+
+    function shareBtnHTML(m, n1, n2, cls) {
+      const t = tokenOf(m);
+      if (!t) return '';
+      return `<button class="share-btn${cls ? ' ' + cls : ''}" type="button" data-share="${t}"
+    aria-label="${n1} gegen ${n2} teilen" title="Teilen"><svg class="ico-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/></svg><svg class="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>`;
+    }
+
+    function shareUrl(m) {
+      const t = tokenOf(m);
+      if (!t) return '';
+      const base = /^https?:$/.test(location.protocol) ? location.origin : 'https://ligazeit.de';
+      return `${base}/#g=${t}`;
+    }
+
+    // Web Share API (WhatsApp & Co. im System-Dialog), sonst Link kopieren.
+    function shareMatch(m, btn) {
+      const info = shareInfo(m), url = shareUrl(m);
+      if (!url) return;
+      const text = `${info.who}\n${info.when} · ${info.ctx}`;
+      if (navigator.share) {
+        navigator.share({ title: info.who, text, url })
+          .catch(err => { if (!err || err.name !== 'AbortError') copyShare(text, url, btn); });
+        return;
+      }
+      copyShare(text, url, btn);
+    }
+
+    function copyShare(text, url, btn) {
+      const full = `${text}\n${url}`;
+      const ok = () => shareCopied(btn);
+      const legacy = () => {
+        const ta = document.createElement('textarea');
+        ta.value = full;
+        ta.style.cssText = 'position:fixed;top:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch (e) { }
+        ta.remove();
+        return copied;
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(full).then(ok).catch(() => { if (legacy()) ok(); });
+      } else if (legacy()) ok();
+    }
+
+    function shareCopied(btn) {
+      const prev = btn.getAttribute('aria-label');
+      btn.classList.add('copied');
+      btn.setAttribute('aria-label', 'Link kopiert');
+      clearTimeout(btn._copyTimer);
+      btn._copyTimer = setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.setAttribute('aria-label', prev);
+      }, 1600);
+    }
+
+    function onShareClick(btn) {
+      const t = parseShareToken(btn.dataset.share || '');
+      if (!t) return;
+      const m = S.matches.find(x => Number(x.matchID) === t.mid
+        && (x.leagueKey || S.league) === t.lk
+        && isTsdbMatch(x) === (t.source === 'thesportsdb'));
+      if (m) shareMatch(m, btn);
+    }
+
+    // ── Geteiltes Spiel: finden, hervorheben, öffnen ──
+    function findSharedMatch() {
+      if (!S.share) return null;
+      return S.matches.find(m => Number(m.matchID) === S.share.mid
+        && (m.leagueKey || S.league) === S.share.lk
+        && isTsdbMatch(m) === (S.share.source === 'thesportsdb')) || null;
+    }
+
+    function isSharedMatch(m) {
+      return !!S.share && (m.leagueKey || S.league) === S.share.lk
+        && Number(m.matchID) === S.share.mid
+        && isTsdbMatch(m) === (S.share.source === 'thesportsdb');
+    }
+
+    function scrollSharedRow() {
+      if (!S.share || S.share.scrolled) return;
+      const row = document.querySelector('.match-row.shared');
+      if (!row) return;
+      S.share.scrolled = true;
+      // Erst nach dem Tab-Scrollen aus renderTabs (rAF): Das Tab-Scrollen
+      // würde die Position sonst wieder auf den Spieltag-Anfang zurückholen.
+      setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+    }
+
+    // Hash-Ziel anwenden: Liga und Quelle einstellen, Spieltag wählen,
+    // Spiel hervorheben. Aufruf beim ersten Laden und bei hashchange.
+    function applyShareTarget(t) {
+      const okSrc = linkSourceOk(t.lk, t.source);
+      const srcChanged = okSrc && S.source !== t.source;
+      if (okSrc) S.source = t.source;
+      S.share = { lk: t.lk, source: t.source, mid: t.mid, scrolled: false };
+      if (S.league === t.lk) {
+        const sm = srcChanged ? null : findSharedMatch();
+        if (!srcChanged) {
+          if (sm) {
+            switchView('schedule');
+            S.sel = sm.group.groupOrderID;
+            renderTabs(); renderMatches();
+            scrollSharedRow();
+          }
+          return;
+        }
+        // Andere Quelle: Daten wie beim Umschalten neu laden.
+        S.table = null; S.openMatches.clear(); stopPolling();
+        switchView('schedule'); init();
+        return;
+      }
+      switchLeague(t.lk);
+    }
+
     // ━━━ Render: League Select ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function renderLeagueSwitch() {
       $('leagueSelect').value = S.league;
@@ -2153,6 +2407,8 @@
       const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
       const i1 = teamIcon(t1);
       const i2 = teamIcon(t2);
+      const sb = shareBtnHTML(m, n1, n2, 'share-desk');
+      const sbm = shareBtnHTML(m, n1, n2, '');
       let scoreD, scoreM1 = '', scoreM2 = '', stHTML, metaSt;
       if (m.matchIsFinished && r) {
         scoreD = `<div class="score fin">${num(r.pointsTeam1)} <span class="score-sep">:</span> ${num(r.pointsTeam2)}</div>`;
@@ -2187,13 +2443,13 @@
       const attrs = canOpen
         ? ` expandable${open ? ' open' : ''}" role="button" tabindex="0" data-mid="${id}" aria-expanded="${open}" aria-controls="goals-${id}" aria-label="Spielverlauf ${n1} gegen ${n2}`
         : '';
-      return `<div class="match-row${attrs}">
-    <div class="m-mobile-meta"><span>${d.tm} Uhr</span><span class="m-meta-st">${metaSt}${chev}</span></div>
+      return `<div class="match-row${isSharedMatch(m) ? ' shared' : ''}${attrs}">
+    <div class="m-mobile-meta"><span>${d.tm} Uhr</span><span class="m-meta-st">${metaSt}${chev}</span>${sbm}</div>
     <div class="m-time">${d.tm}</div>
     <div class="team home"><span class="team-name${isFavTeam(m, t1) ? ' is-fav' : ''}">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
     <div class="team away">${i2}<span class="team-name${isFavTeam(m, t2) ? ' is-fav' : ''}">${n2}</span><span class="team-score">${scoreM2}</span></div>
-    <div class="m-status">${stHTML}${chev}</div></div>${open ? goalsBlock(m) : ''}`;
+    <div class="m-status">${stHTML}${chev}</div>${sb}</div>${open ? goalsBlock(m) : ''}`;
     }
 
     // ━━━ Spielverlauf: Tore mit Zwischenstand, Torschützin/Torschütze, Minute ━━
@@ -2294,11 +2550,12 @@
         const s1 = r ? num(r.pointsTeam1) : '0', s2 = r ? num(r.pointsTeam2) : '0';
         const min = matchMinute(m);
         const mdName = m.group ? esc(m.group.groupName) : '';
+        const sb = shareBtnHTML(m, n1, n2, '');
         cards += `<div class="live-card"><div class="live-card-body"><div class="live-teams">
       <div class="live-team-row"><div class="live-team-info">${i1}<span class="live-team-name">${n1}</span></div><span class="live-team-score">${s1}</span></div>
       <div class="live-team-row"><div class="live-team-info">${i2}<span class="live-team-name">${n2}</span></div><span class="live-team-score">${s2}</span></div>
     </div></div><div class="live-card-footer">
-      <span class="live-minute"><span class="live-dot"></span> ${min}</span><span class="live-matchday">${mdName}</span>
+      <span class="live-minute"><span class="live-dot"></span> ${min}</span><span class="live-matchday">${mdName}${sb}</span>
     </div></div>`;
       }
       el.innerHTML = `<div class="live-header">
@@ -2417,6 +2674,7 @@
           const past = m.matchIsFinished || t + durOf(m) < now;
           const g = past ? 1 : 2;
           m.group = { groupOrderID: g, groupName: TEAM_ROUNDS[g].long };
+          m.listView = true;
           out.push(m);
         }
       }
@@ -2571,6 +2829,8 @@
     });
 
     $('viewSchedule').addEventListener('click', e => {
+      const sb = e.target.closest('.share-btn');
+      if (sb) { onShareClick(sb); return; }
       const row = e.target.closest('.match-row.expandable');
       if (row) toggleMatch(row);
     });
@@ -2583,6 +2843,11 @@
       toggleMatch(row);
     });
 
+    $('viewLive').addEventListener('click', e => {
+      const sb = e.target.closest('.share-btn');
+      if (sb) onShareClick(sb);
+    });
+
     // ━━━ Init ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     async function init() {
       const rb = $('btnRefresh'); rb.classList.add('spin');
@@ -2593,8 +2858,12 @@
       try {
         const cur = await loadInitial();
         S.cur = cur; S.sel = cur;
+        // Geteiltes Spiel: Spieltag des Spiels wählen statt des aktuellen.
+        const sm = findSharedMatch();
+        if (sm) S.sel = sm.group.groupOrderID;
         S.lastUpdate = new Date();
         renderTabs(); renderMatches(); updateLiveIndicator();
+        scrollSharedRow();
         if (S.view === 'table') { S.table = null; loadTable(); }
       } catch (e) {
         $('viewSchedule').innerHTML = `<div class="card"><div class="state-msg">
@@ -2615,6 +2884,24 @@
       const source = localStorage.getItem('bl-source');
       if (source && SOURCES[source]) S.source = source;
     } catch (e) { }
+
+    // Geteiltes Spiel aus der URL übernehmen, bevor die Daten geladen werden.
+    // Die Liga wird wie beim Umschalten gespeichert, die Quelle nicht – sie
+    // gehört zum Link, nicht zur Wahl des Empfängers.
+    const shareTarget = readShareHash();
+    if (shareTarget) {
+      S.league = shareTarget.lk;
+      if (linkSourceOk(shareTarget.lk, shareTarget.source)) S.source = shareTarget.source;
+      S.share = { lk: shareTarget.lk, source: shareTarget.source, mid: shareTarget.mid, scrolled: false };
+      try { localStorage.setItem('bl-league', shareTarget.lk); } catch (e) { }
+    }
+
+    // Link im bereits offenen Tab (z. B. Zurück-Button) erneut anwenden.
+    window.addEventListener('hashchange', () => {
+      const t = readShareHash();
+      if (!t || (S.share && S.share.lk === t.lk && S.share.source === t.source && S.share.mid === t.mid)) return;
+      applyShareTarget(t);
+    });
 
     init();
   </script>
