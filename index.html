@@ -30,6 +30,9 @@
   <meta property="og:image" content="https://ligazeit.de/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ligazeit: Ergebnisse, Spielpläne und Tabellen ohne Werbung">
+  <meta property="og:site_name" content="Ligazeit">
+  <meta property="og:locale" content="de_DE">
   <meta name="twitter:card" content="summary_large_image">
   <title>Ligazeit – Ergebnisse & Tabellen</title>
   <meta name="description"
@@ -608,8 +611,57 @@
       transition: color .15s
     }
 
+    .share-btn {
+      position: relative
+    }
+
+    /* Tippfläche ~44px, ohne das Layout zu vergrößern */
+    .share-btn::after {
+      content: "";
+      position: absolute;
+      inset: -10px
+    }
+
     .share-btn:hover {
       color: var(--primary)
+    }
+
+    /* Desktop: Teilen-Button erst beim Überfahren der Zeile zeigen.
+       Touch-Geräte und Tastatur-Fokus sehen ihn weiterhin. */
+    @media (hover: hover) and (pointer: fine) {
+      .share-desk {
+        opacity: 0;
+        transition: opacity .15s, color .15s
+      }
+
+      .match-row:hover .share-desk,
+      .match-row:focus-within .share-desk,
+      .share-desk:focus-visible,
+      .share-desk.copied {
+        opacity: 1
+      }
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      transform: translate(-50%, 12px);
+      background: var(--text);
+      color: var(--surface);
+      font-size: 14px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 100
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0)
     }
 
     .share-btn:focus-visible {
@@ -2239,9 +2291,17 @@
     function shareMatch(m, btn) {
       const info = shareInfo(m), url = shareUrl(m);
       if (!url) return;
-      const text = `${info.who}\n${info.when} · ${info.ctx}`;
+      // Das Link-Bild ist für alle Spiele gleich (Messenger cachen es lange und
+      // führen kein JS aus), also trägt der Text die Info: Spiel, Stand, Zeit, Liga.
+      const r = finalResult(m);
+      let status = '';
+      if (r && m.matchIsFinished) status = `\n🏁 Endstand ${num(r.pointsTeam1)}:${num(r.pointsTeam2)}`;
+      else if (isLive(m)) status = `\n🔴 Live ${matchMinute(m)} · ${r ? num(r.pointsTeam1) + ':' + num(r.pointsTeam2) : '0:0'}`;
+      const text = `⚽ ${info.who}${status}\n🕐 ${info.when}\n🏆 ${info.ctx}`;
       if (navigator.share) {
-        navigator.share({ title: info.who, text, url })
+        // Link bewusst im Text statt im url-Feld: Das macOS-Teilen-Menü (Kopieren,
+        // Notizen, …) übernimmt sonst nur die URL und verwirft den Text.
+        navigator.share({ title: info.who, text: `${text}\n${url}` })
           .catch(err => { if (!err || err.name !== 'AbortError') copyShare(text, url, btn); });
         return;
       }
@@ -2267,7 +2327,22 @@
       } else if (legacy()) ok();
     }
 
+    function showToast(msg) {
+      let t = document.getElementById('toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'toast'; t.className = 'toast';
+        t.setAttribute('role', 'status');
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      requestAnimationFrame(() => t.classList.add('show'));
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
     function shareCopied(btn) {
+      showToast('Kopiert – Spiel und Link in der Zwischenablage');
       const prev = btn.getAttribute('aria-label');
       btn.classList.add('copied');
       btn.setAttribute('aria-label', 'Link kopiert');
