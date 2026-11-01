@@ -1169,6 +1169,31 @@
       font-weight: 700
     }
 
+    /* Vereinsnamen sind anklickbar (zeigen alle Spiele des Vereins) */
+    .club-link {
+      cursor: pointer
+    }
+
+    @media (hover: hover) {
+      .club-link:hover {
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px
+      }
+    }
+
+    .club-link:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 0;
+      border-radius: 3px
+    }
+
+    .club-back {
+      font-size: 22px;
+      line-height: 1;
+      padding-bottom: 3px
+    }
+
     .table-note {
       padding: 10px 20px;
       font-size: 12px;
@@ -1340,6 +1365,8 @@
 
   <header class="header">
     <div class="header-left">
+      <button class="refresh-btn club-back hidden" id="clubBack" type="button" title="Zurück"
+        aria-label="Zurück">‹</button>
       <h1 id="pageTitle">⚽ Bundesliga</h1>
       <button class="fav-star fav-title hidden" id="favTitle" type="button" aria-pressed="false">☆</button>
       <span class="badge" id="badgeSeason"></span>
@@ -1444,6 +1471,9 @@
       // Spiele aller mit Stern markierten Teams. Geteilt wird das Spiel seiner
       // Liga (matchRow übergibt sie über leagueKey), daher ohne eigenen Code.
       meine: { keys: [], tsdb: { id: null, rounds: 0 }, tsdbOnly: true, favorites: true, label: 'Meine Spiele', fullLabel: 'Meine Spiele', title: '⭐ Meine Spiele', gender: 'frauen' },
+      // Alle Spiele eines Vereins (Klick auf einen Vereinsnamen). Verein, Liga und
+      // Quelle stehen in S.club; Titel, Sportart und Geschlecht setzt openClub.
+      verein: { keys: [], tsdb: { id: null, rounds: 0 }, tsdbOnly: true, club: true, label: 'Verein', fullLabel: 'Verein', title: '⚽ Verein', gender: 'maenner' },
       handball1: { code: 'hb', keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
     };
 
@@ -1459,7 +1489,7 @@
     // Spieldauer eines konkreten Spiels (in "Meine Spiele" mischen sich Sportarten).
     function durOf(m) { return m.durMs ?? matchDurMs(); }
     // Listenansichten ohne Spieltage und Tabelle.
-    function isListView(lk) { const l = leagueCfg(lk); return !!(l.team || l.favorites); }
+    function isListView(lk) { const l = leagueCfg(lk); return !!(l.team || l.favorites || l.club); }
     // Rundennummern bei TheSportsDB für Pokalwettbewerbe (aus der Saison 2025/26
     // der Champions League abgelesen). 400 und 0 sind Qualifikation/Play-off.
     const CUP_ROUNDS = {
@@ -1512,6 +1542,7 @@
       oldbGoals: null,         // OpenLigaDB-Saison als Ersatzquelle für Torschützen
       seasonLoadedAt: 0,       // TheSportsDB Premium: Zeitpunkt der letzten Saisonabfrage
       tableNote: '',
+      club: null,              // Vereinsansicht: { lk, src, id, name, back }
       share: null              // geteiltes Spiel aus einem Link: { lk, source, mid, scrolled }
     };
 
@@ -1622,8 +1653,8 @@
     }
 
     // Nationalmannschaft: letzte und nächste Spiele, unabhängig vom Wettbewerb.
-    async function tsdbLoadTeam(lk) {
-      const id = leagueCfg(lk).team;
+    async function tsdbLoadTeam(lk, teamId) {
+      const id = teamId ?? leagueCfg(lk).team;
       const [last, next] = await Promise.all([
         tsdb(`/eventslast.php?id=${id}`), tsdb(`/eventsnext.php?id=${id}`)]);
       const seen = new Set(), out = [];
@@ -2136,6 +2167,8 @@
       if (src() === 'thesportsdb') matches.forEach(m => { applyLive(m); applyGoalCache(m); });
       S.matches = matches;
       S.mdays = groupByDay(matches);
+      // Vereinsansicht: ganze Saison, daher neueste vergangene Spiele zuerst.
+      if (leagueCfg().club && S.mdays[1]) S.mdays[1].matches.reverse();
       const n = isListView() ? 2 : src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
       const all = new Set(Object.keys(S.mdays).map(Number));
       for (let i = 1; i <= n; i++) all.add(i);
@@ -2152,6 +2185,10 @@
       }
       if (leagueCfg().favorites) {
         applyMatches(await loadFavorites());
+        return S.mdays[2] && S.mdays[2].matches.length ? 2 : 1;
+      }
+      if (leagueCfg().club) {
+        applyMatches(await loadClub());
         return S.mdays[2] && S.mdays[2].matches.length ? 2 : 1;
       }
       if (leagueCfg().team) {
@@ -2181,6 +2218,7 @@
       try {
         if (src() === 'openligadb') applyMatches(await loadMatches());
         else if (leagueCfg().favorites) applyMatches(await loadFavorites());
+        else if (leagueCfg().club) applyMatches(await loadClub());
         else if (leagueCfg().team) applyMatches(await tsdbLoadTeam());
         else if (!TSDB_FREE) {
           let reload = Date.now() - S.seasonLoadedAt > TSDB_SEASON_REFRESH_MS;
@@ -2414,12 +2452,14 @@
 
     // ━━━ Render: League Select ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function renderLeagueSwitch() {
+      syncClubOption();
       $('leagueSelect').value = S.league;
       $('pageTitle').textContent = leagueCfg().title;
+      $('clubBack').classList.toggle('hidden', !leagueCfg().club);
       const noTable = isListView();
-      const tf = leagueCfg().team ? favEntry(S.league, 'thesportsdb', leagueCfg().team) : null;
+      const tf = titleFav();
       $('favTitle').classList.toggle('hidden', !tf);
-      if (tf) setStar($('favTitle'), isFav(tf), leagueCfg().fullLabel);
+      if (tf) setStar($('favTitle'), isFav(tf), tf.name || leagueCfg().fullLabel);
       document.querySelector('.view-btn[data-view="table"]').classList.toggle('hidden', noTable);
       if (noTable && S.view === 'table') switchView('schedule');
     }
@@ -2450,6 +2490,8 @@
         const msg = leagueCfg().favorites
           ? (getFavs().length ? (S.sel === 2 ? 'In den nächsten Wochen spielt keines deiner Teams.' : 'Deine Teams haben zuletzt nicht gespielt.')
             : 'Noch keine Favoriten. Markiere Teams in einer Tabelle mit dem Stern ☆, Nationalmannschaften neben dem Titel.')
+          : leagueCfg().club
+          ? (S.sel === 2 ? 'Für diesen Verein steht kein kommendes Spiel im Spielplan.' : 'Für diesen Verein liegen noch keine Spiele vor.')
           : leagueCfg().team
           ? (S.sel === 2 ? 'Bei TheSportsDB ist derzeit kein kommendes Spiel eingetragen.' : 'Derzeit liegen keine Daten vor.')
           : `${leagueCfg().cup ? 'Für diese Runde' : 'Für diesen Spieltag'} liegen keine Daten vor.`;
@@ -2482,6 +2524,7 @@
       const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
       const i1 = teamIcon(t1);
       const i2 = teamIcon(t2);
+      const c1 = clubAttrs(m, t1), c2 = clubAttrs(m, t2);
       const sb = shareBtnHTML(m, n1, n2, 'share-desk');
       const sbm = shareBtnHTML(m, n1, n2, '');
       let scoreD, scoreM1 = '', scoreM2 = '', stHTML, metaSt;
@@ -2521,9 +2564,9 @@
       return `<div class="match-row${isSharedMatch(m) ? ' shared' : ''}${attrs}">
     <div class="m-mobile-meta"><span>${d.tm} Uhr</span><span class="m-meta-st">${metaSt}${chev}</span>${sbm}</div>
     <div class="m-time">${d.tm}</div>
-    <div class="team home"><span class="team-name${isFavTeam(m, t1) ? ' is-fav' : ''}">${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
+    <div class="team home"><span class="team-name${isFavTeam(m, t1) ? ' is-fav' : ''}${c1 ? ' club-link' : ''}"${c1}>${n1}</span>${i1}<span class="team-score">${scoreM1}</span></div>
     ${scoreD}
-    <div class="team away">${i2}<span class="team-name${isFavTeam(m, t2) ? ' is-fav' : ''}">${n2}</span><span class="team-score">${scoreM2}</span></div>
+    <div class="team away">${i2}<span class="team-name${isFavTeam(m, t2) ? ' is-fav' : ''}${c2 ? ' club-link' : ''}"${c2}>${n2}</span><span class="team-score">${scoreM2}</span></div>
     <div class="m-status">${stHTML}${chev}</div>${sb}</div>${open ? goalsBlock(m) : ''}`;
     }
 
@@ -2622,13 +2665,14 @@
         const n1 = esc(t1.shortName || t1.teamName), n2 = esc(t2.shortName || t2.teamName);
         const i1 = teamIcon(t1);
         const i2 = teamIcon(t2);
+        const c1 = clubAttrs(m, t1), c2 = clubAttrs(m, t2);
         const s1 = r ? num(r.pointsTeam1) : '0', s2 = r ? num(r.pointsTeam2) : '0';
         const min = matchMinute(m);
         const mdName = m.group ? esc(m.group.groupName) : '';
         const sb = shareBtnHTML(m, n1, n2, '');
         cards += `<div class="live-card"><div class="live-card-body"><div class="live-teams">
-      <div class="live-team-row"><div class="live-team-info">${i1}<span class="live-team-name">${n1}</span></div><span class="live-team-score">${s1}</span></div>
-      <div class="live-team-row"><div class="live-team-info">${i2}<span class="live-team-name">${n2}</span></div><span class="live-team-score">${s2}</span></div>
+      <div class="live-team-row"><div class="live-team-info">${i1}<span class="live-team-name${c1 ? ' club-link' : ''}"${c1}>${n1}</span></div><span class="live-team-score">${s1}</span></div>
+      <div class="live-team-row"><div class="live-team-info">${i2}<span class="live-team-name${c2 ? ' club-link' : ''}"${c2}>${n2}</span></div><span class="live-team-score">${s2}</span></div>
     </div></div><div class="live-card-footer">
       <span class="live-minute"><span class="live-dot"></span> ${min}</span><span class="live-matchday">${mdName}${sb}</span>
     </div></div>`;
@@ -2658,7 +2702,8 @@
         const tid = Number(t.teamId ?? t.teamInfoId);
         const fe = Number.isInteger(tid) && tid > 0 ? favEntry(S.league, src(), tid, t.teamName) : null;
         const star = fe ? `<button class="fav-star${isFav(fe) ? ' on' : ''}" type="button" data-fav="${tid}" data-name="${esc(t.teamName || '')}" aria-pressed="${isFav(fe)}" aria-label="${esc(t.teamName || '')} ${isFav(fe) ? 'nicht mehr ' : ''}als Favorit merken">${isFav(fe) ? '★' : '☆'}</button>` : '';
-        return `<tr><td class="rk">${rk}</td><td><div class="tc">${ic}<span>${nm}</span>${star}</div></td>
+        const ca = clubAttrsFor(S.league, src(), t);
+        return `<tr><td class="rk">${rk}</td><td><div class="tc">${ic}<span${ca ? ` class="club-link"${ca}` : ''}>${nm}</span>${star}</div></td>
       <td class="c">${num(t.matches)}</td><td class="c">${num(t.won)}</td><td class="c">${num(t.draw)}</td><td class="c">${num(t.lost)}</td>
       <td class="c">${num(t.goals)}:${num(t.opponentGoals)}</td><td class="diff ${dc}">${ds}</td><td class="pts">${num(t.points)}</td></tr>`;
       }).join('');
@@ -2710,18 +2755,17 @@
       btn.title = on ? 'Favorit entfernen' : 'Als Favorit merken';
     }
 
-    // Alle Spiele der Favoriten aus den betroffenen Wettbewerben laden.
-    async function loadFavorites() {
-      const favs = getFavs();
-      if (!favs.length) return [];
-      // Plan: je Liga und Quelle die Team-IDs, die dort interessieren.
+    // Spiele der Teams `entries` ({ lk, src, id }) aus allen betroffenen
+    // Wettbewerben einsammeln: je Liga und Quelle die Team-IDs, die dort
+    // interessieren. Liefert die Ergebnisse von Promise.allSettled.
+    function collectTeamMatches(entries) {
       const plan = new Map();
       const want = (lk, source, id) => {
         const k = `${source}|${lk}`;
         if (!plan.has(k)) plan.set(k, { lk, src: source, ids: new Set() });
         plan.get(k).ids.add(id);
       };
-      for (const f of favs) {
+      for (const f of entries) {
         const l = LEAGUES[f.lk];
         want(f.lk, f.src, f.id);
         // Europapokal dazu (nur TheSportsDB: dieselbe Team-ID in beiden Wettbewerben)
@@ -2729,14 +2773,23 @@
           want(l.gender === 'frauen' ? 'uwcl' : 'ucl', 'thesportsdb', f.id);
         }
       }
-      const parts = await Promise.allSettled([...plan.values()].map(async p => {
+      return Promise.allSettled([...plan.values()].map(async p => {
         const l = LEAGUES[p.lk];
-        if (l.team) return (await tsdbLoadTeam(p.lk)).map(m => Object.assign(m, { leagueKey: p.lk }));
+        // Nationalmannschaften: letzte und nächste Spiele je Mannschaft
+        if (l.team) {
+          const lists = await Promise.all([...p.ids].map(id => tsdbLoadTeam(p.lk, id)));
+          return lists.flat().map(m => Object.assign(m, { leagueKey: p.lk }));
+        }
         const all = p.src === 'openligadb' ? await loadMatches(p.lk) : await tsdbLoadSeason(p.lk);
         return all
           .filter(m => p.ids.has(Number(m.team1 && m.team1.teamId)) || p.ids.has(Number(m.team2 && m.team2.teamId)))
           .map(m => Object.assign(m, { competition: l.fullLabel, leagueKey: p.lk }));
       }));
+    }
+
+    // Doppelte Spiele entfernen (optional nach Zeitfenster filtern) und in
+    // "Zuletzt" (1) und "Demnächst" (2) einsortieren.
+    function sortPastNext(parts, inRange) {
       const now = Date.now(), seen = new Set(), out = [];
       for (const r of parts) {
         if (r.status !== 'fulfilled') continue;
@@ -2745,7 +2798,7 @@
           if (seen.has(key)) continue;
           seen.add(key);
           const t = Date.parse(m.matchDateTime);
-          if (t < now - FAV_PAST_DAYS * 864e5 || t > now + FAV_NEXT_DAYS * 864e5) continue;
+          if (inRange && !inRange(t, now)) continue;
           const past = m.matchIsFinished || t + durOf(m) < now;
           const g = past ? 1 : 2;
           m.group = { groupOrderID: g, groupName: TEAM_ROUNDS[g].long };
@@ -2757,17 +2810,125 @@
       return out;
     }
 
+    // Alle Spiele der Favoriten der nächsten Wochen und der letzten Tage.
+    async function loadFavorites() {
+      const favs = getFavs();
+      if (!favs.length) return [];
+      const parts = await collectTeamMatches(favs);
+      return sortPastNext(parts, (t, now) => t >= now - FAV_PAST_DAYS * 864e5 && t <= now + FAV_NEXT_DAYS * 864e5);
+    }
+
+    // ━━━ Vereinsansicht ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Ein Klick auf einen Vereinsnamen (Spielplan, Live, Tabelle) zeigt alle
+    // Spiele des Vereins in der Saison, bei Fußball inkl. Europapokal.
+    async function loadClub() {
+      const c = S.club;
+      if (!c) return [];
+      return sortPastNext(await collectTeamMatches([favEntry(c.lk, c.src, c.id, c.name)]));
+    }
+
+    // Titel-Stern: Nationalmannschaft bzw. Verein der Vereinsansicht.
+    function titleFav() {
+      const l = leagueCfg();
+      if (l.team) return favEntry(S.league, 'thesportsdb', l.team, l.fullLabel);
+      if (l.club && S.club) return favEntry(S.club.lk, S.club.src, S.club.id, S.club.name);
+      return null;
+    }
+
+    // Attribute für einen anklickbaren Vereinsnamen; leer, wenn die Ansicht
+    // keinen Verein ansteuern kann (keine Team-ID).
+    function clubAttrsFor(lk, source, t) {
+      const id = Number(t && (t.teamId ?? t.teamInfoId));
+      const l = LEAGUES[lk];
+      if (!l || l.club || l.favorites || !Number.isInteger(id) || id <= 0) return '';
+      const name = t.teamName || t.shortName || '';
+      return ` data-club-id="${id}" data-club-lk="${esc(lk)}" data-club-src="${esc(source)}" data-club-name="${esc(name)}" role="link" tabindex="0" title="Alle Spiele: ${esc(name)}"`;
+    }
+    function clubAttrs(m, t) {
+      return clubAttrsFor(m.leagueKey || S.league, m.src === 'tsdb' ? 'thesportsdb' : 'openligadb', t);
+    }
+
+    // Die Vereinsauswahl erscheint nur, solange eine Vereinsansicht offen ist.
+    function syncClubOption() {
+      const sel = $('leagueSelect');
+      let opt = sel.querySelector('option[value="verein"]');
+      if (leagueCfg().club && S.club) {
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.value = 'verein';
+          sel.insertBefore(opt, sel.firstChild);
+        }
+        opt.textContent = '🏟 ' + S.club.name;
+      } else if (opt) opt.remove();
+    }
+
+    function openClub(c) {
+      if (!c || !LEAGUES[c.lk] || !SOURCES[c.src] || !Number.isInteger(c.id) || c.id <= 0) return;
+      const inClub = S.league === 'verein' && !!S.club;
+      if (inClub && S.club.src === c.src && S.club.id === c.id) return;   // schon offen
+      // Ist der Verein ein Favorit, gilt die Liga seines Sterns (statt z. B. nur Champions League).
+      const fav = getFavs().find(f => f.src === c.src && f.id === c.id);
+      const lk = fav ? fav.lk : c.lk;
+      const base = LEAGUES[lk];
+      const name = c.name || (fav && fav.name) || 'Verein';
+      S.club = { lk, src: c.src, id: c.id, name, back: inClub ? S.club.back : S.league };
+      Object.assign(LEAGUES.verein, {
+        sport: base.sport, gender: base.gender, fullLabel: name, label: name,
+        title: `${base.sport === 'handball' ? '🤾' : '⚽'} ${name}`
+      });
+      if (!inClub) { try { history.pushState({ ligazeitClub: 1 }, ''); } catch (e) { } }
+      switchLeague('verein', true);
+    }
+
+    // Zurück zur Liga bzw. Ansicht, aus der der Verein geöffnet wurde.
+    function closeClub() {
+      if (S.league !== 'verein') return;
+      const back = S.club && LEAGUES[S.club.back] && !LEAGUES[S.club.back].club ? S.club.back : 'maenner1';
+      S.club = null;
+      switchLeague(back);
+    }
+
+    function clubFromEl(el) {
+      const d = el.dataset;
+      return { lk: d.clubLk, src: d.clubSrc, id: Number(d.clubId), name: d.clubName };
+    }
+    // true, wenn der Klick ein Vereinsname war.
+    function onClubClick(e) {
+      const el = e.target.closest('.club-link');
+      if (!el) return false;
+      openClub(clubFromEl(el));
+      return true;
+    }
+    function onClubKey(e) {
+      if (e.key !== 'Enter') return false;
+      const el = e.target.closest('.club-link');
+      if (!el) return false;
+      e.preventDefault();
+      openClub(clubFromEl(el));
+      return true;
+    }
+
+    $('clubBack').addEventListener('click', () => {
+      // Hat openClub einen Verlaufseintrag angelegt, geht der Zurück-Knopf des Browsers denselben Weg.
+      if (history.state && history.state.ligazeitClub) history.back(); else closeClub();
+    });
+    window.addEventListener('popstate', () => { if (S.league === 'verein') closeClub(); });
+    // Nach einem Neuladen gehört der Verlaufseintrag zu keiner Vereinsansicht mehr.
+    try { if (history.state && history.state.ligazeitClub) history.replaceState(null, ''); } catch (e) { }
+
     // Stern in der Tabelle
     $('viewTable').addEventListener('click', e => {
+      if (onClubClick(e)) return;
       const b = e.target.closest('.fav-star');
       if (!b) return;
       const f = favEntry(S.league, src(), b.dataset.fav, b.dataset.name);
       toggleFav(f);
       setStar(b, isFav(f), f.name);
     });
-    // Stern im Titel (Nationalmannschaften)
+    // Stern im Titel (Nationalmannschaften, Vereinsansicht)
     $('favTitle').addEventListener('click', () => {
-      const f = favEntry(S.league, 'thesportsdb', leagueCfg().team, leagueCfg().fullLabel);
+      const f = titleFav();
+      if (!f) return;
       toggleFav(f);
       setStar($('favTitle'), isFav(f), f.name);
     });
@@ -2802,11 +2963,12 @@
     }
 
     // ━━━ League Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function switchLeague(key) {
-      if (S.league === key) return;
+    function switchLeague(key, force) {
+      if (S.league === key && !force) return;
       S.league = key; S.table = null; S.openMatches.clear(); stopPolling();
       renderLeagueSwitch();
-      try { localStorage.setItem('bl-league', key); } catch (e) { }
+      // Die Vereinsansicht wird nicht gemerkt (es gäbe nach dem Neuladen keinen Verein).
+      if (key !== 'verein') { try { localStorage.setItem('bl-league', key); } catch (e) { } }
       switchView('schedule'); init();
     }
 
@@ -2849,7 +3011,7 @@
       $('sourceSelect').value = S.source;
       $('sourceLink').textContent = cur.label;
       $('sourceLink').href = cur.url;
-      $('sourceNote').textContent = leagueCfg().favorites ? ''
+      $('sourceNote').textContent = leagueCfg().favorites || leagueCfg().club ? ''
         : S.source === 'thesportsdb' && src() !== 'thesportsdb'
         ? ' (TheSportsDB führt diese Liga nicht)'
         : S.source === 'openligadb' && src() !== 'openligadb' ? ' (OpenLigaDB führt diese Liga nicht)' : '';
@@ -2904,6 +3066,7 @@
     });
 
     $('viewSchedule').addEventListener('click', e => {
+      if (onClubClick(e)) return;
       const sb = e.target.closest('.share-btn');
       if (sb) { onShareClick(sb); return; }
       const row = e.target.closest('.match-row.expandable');
@@ -2911,6 +3074,7 @@
     });
 
     $('viewSchedule').addEventListener('keydown', e => {
+      if (onClubKey(e)) return;
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const row = e.target.closest('.match-row.expandable');
       if (!row || row !== e.target) return;
@@ -2919,9 +3083,12 @@
     });
 
     $('viewLive').addEventListener('click', e => {
+      if (onClubClick(e)) return;
       const sb = e.target.closest('.share-btn');
       if (sb) onShareClick(sb);
     });
+    $('viewLive').addEventListener('keydown', onClubKey);
+    $('viewTable').addEventListener('keydown', onClubKey);
 
     // ━━━ Init ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     async function init() {
@@ -2955,7 +3122,7 @@
       if (saved === 'frauen') localStorage.setItem('bl-league', 'frauen1');
       if (saved === 'maenner') localStorage.setItem('bl-league', 'maenner1');
       const current = localStorage.getItem('bl-league');
-      if (current && LEAGUES[current]) S.league = current;
+      if (current && LEAGUES[current] && !LEAGUES[current].club) S.league = current;
       const source = localStorage.getItem('bl-source');
       if (source && SOURCES[source]) S.source = source;
     } catch (e) { }
