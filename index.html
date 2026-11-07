@@ -8,7 +8,7 @@
        Community-Daten; ohne diese Liste könnte jeder, der ein Wappen einträgt,
        die Browser aller Besucher Anfragen an einen beliebigen Server senden lassen. -->
   <meta http-equiv="Content-Security-Policy"
-    content="img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://*.wikipedia.org https://r2.thesportsdb.com https://www.thesportsdb.com; connect-src https://api.openligadb.de https://api.ligazeit.de">
+    content="img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://*.wikipedia.org https://r2.thesportsdb.com https://www.thesportsdb.com; connect-src https://api.ligazeit.de">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#ffffff" id="metaThemeColor">
   <script>
@@ -1119,20 +1119,6 @@
       text-decoration: underline
     }
 
-    .source-pick {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px
-    }
-
-    .source-select {
-      font-size: 12px;
-      padding: 4px 26px 4px 10px;
-      background-position: right 8px center;
-      background-size: 10px
-    }
-
     /* Favoriten-Stern in Tabelle und Titel */
     .fav-star {
       background: none;
@@ -1376,7 +1362,6 @@
         <option value="meine">⭐ Meine Spiele</option>
         <optgroup label="Frauen">
           <option value="frauen1">Frauen-Bundesliga</option>
-          <option value="frauen2">2. Frauen-Bundesliga</option>
           <option value="wsl">Women's Super League</option>
           <option value="premiereligue">Première Ligue</option>
           <option value="uwcl">Champions League</option>
@@ -1436,47 +1421,35 @@
   </main>
 
   <footer class="footer">
-    <div>Daten bereitgestellt von <a id="sourceLink" href="https://www.openligadb.de" target="_blank"
-        rel="noopener">OpenLigaDB</a><span id="sourceNote"></span></div>
-    <div class="source-pick">
-      <label for="sourceSelect">Datenquelle</label>
-      <select class="league-select source-select" id="sourceSelect">
-        <option value="openligadb">OpenLigaDB</option>
-        <option value="thesportsdb">Ligazeit</option>
-      </select>
-    </div>
+    <div>Daten bereitgestellt von <a href="https://www.thesportsdb.com" target="_blank"
+        rel="noopener">TheSportsDB</a></div>
   </footer>
 
   <script>
     // ━━━ Liga-Konfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // OpenLigaDB-Shortcuts werden pro Saison von der Community angelegt und
-    // können sich ändern (Frauen 2026/27: ffb1/ffb2 statt fbl1/fbl2).
-    // Es wird der erste Shortcut verwendet, der Spiele liefert.
-    // tsdb: Liga-ID bei TheSportsDB und Anzahl Spieltage; null = dort nicht geführt.
-    // code: kurzer Liga-Code für geteilte Links (#g=<code><Quelle><Spiel-ID>).
+    // tsdb: Liga-ID bei TheSportsDB und Anzahl Spieltage.
+    // code: kurzer Liga-Code für geteilte Links (#g=<code>t<Spiel-ID>).
     const LEAGUES = {
-      frauen1: { code: 'f1', keys: ['ffb1', 'fbl1'], tsdb: { id: 5204, rounds: 26 }, label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
-      frauen2: { code: 'f2', keys: ['ffb2', 'fbl2'], tsdb: null, label: '2. Liga', fullLabel: '2. Frauen-Bundesliga', title: '⚽ 2. Frauen-Bundesliga', gender: 'frauen' },
-      maenner1: { code: 'm1', keys: ['bl1'], tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
-      maenner2: { code: 'm2', keys: ['bl2'], tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
-      maenner3: { code: 'm3', keys: ['bl3'], tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
-      // Nur bei TheSportsDB geführt.
-      wsl: { code: 'wsl', keys: [], tsdb: { id: 4849, rounds: 26 }, tsdbOnly: true, label: 'WSL', fullLabel: "Women's Super League", title: "⚽ Women's Super League", gender: 'frauen' },
-      premiereligue: { code: 'pl', keys: [], tsdb: { id: 5203, rounds: 22 }, tsdbOnly: true, label: 'Première Ligue', fullLabel: 'Première Ligue', title: '⚽ Première Ligue', gender: 'frauen' },
+      frauen1: { code: 'f1', tsdb: { id: 5204, rounds: 26 }, label: '1. Liga', fullLabel: 'Frauen-Bundesliga', title: '⚽ Frauen-Bundesliga', gender: 'frauen' },
+      maenner1: { code: 'm1', tsdb: { id: 4331, rounds: 34 }, label: '1. Liga', fullLabel: 'Bundesliga', title: '⚽ Bundesliga', gender: 'maenner' },
+      maenner2: { code: 'm2', tsdb: { id: 4399, rounds: 34 }, label: '2. Liga', fullLabel: '2. Bundesliga', title: '⚽ 2. Bundesliga', gender: 'maenner' },
+      maenner3: { code: 'm3', tsdb: { id: 4639, rounds: 38 }, label: '3. Liga', fullLabel: '3. Liga', title: '⚽ 3. Liga', gender: 'maenner' },
+      wsl: { code: 'wsl', tsdb: { id: 4849, rounds: 26 }, label: 'WSL', fullLabel: "Women's Super League", title: "⚽ Women's Super League", gender: 'frauen' },
+      premiereligue: { code: 'pl', tsdb: { id: 5203, rounds: 22 }, label: 'Première Ligue', fullLabel: 'Première Ligue', title: '⚽ Première Ligue', gender: 'frauen' },
       // Pokalwettbewerbe: rounds = Spieltage der Ligaphase, danach K.-o.-Runden (CUP_ROUNDS).
-      ucl: { code: 'cl', keys: [], tsdb: { id: 4480, rounds: 8 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League', title: '⚽ Champions League', gender: 'maenner' },
-      laliga: { code: 'll', keys: [], tsdb: { id: 4335, rounds: 38 }, tsdbOnly: true, label: 'La Liga', fullLabel: 'La Liga (Spanien)', title: '⚽ La Liga', gender: 'maenner' },
-      uwcl: { code: 'wcl', keys: [], tsdb: { id: 4889, rounds: 6 }, tsdbOnly: true, cup: true, label: 'CL', fullLabel: 'Champions League der Frauen', title: '⚽ Champions League der Frauen', gender: 'frauen' },
+      ucl: { code: 'cl', tsdb: { id: 4480, rounds: 8 }, cup: true, label: 'CL', fullLabel: 'Champions League', title: '⚽ Champions League', gender: 'maenner' },
+      laliga: { code: 'll', tsdb: { id: 4335, rounds: 38 }, label: 'La Liga', fullLabel: 'La Liga (Spanien)', title: '⚽ La Liga', gender: 'maenner' },
+      uwcl: { code: 'wcl', tsdb: { id: 4889, rounds: 6 }, cup: true, label: 'CL', fullLabel: 'Champions League der Frauen', title: '⚽ Champions League der Frauen', gender: 'frauen' },
       // Nationalmannschaften: letzte und nächste Spiele über alle Wettbewerbe.
-      natm: { code: 'nm', keys: [], tsdb: { id: null, rounds: 0 }, team: 133907, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft', title: '⚽ Nationalmannschaft', gender: 'maenner' },
-      natf: { code: 'nf', keys: [], tsdb: { id: null, rounds: 0 }, team: 136805, tsdbOnly: true, label: 'DFB', fullLabel: 'Nationalmannschaft der Frauen', title: '⚽ Nationalmannschaft der Frauen', gender: 'frauen' },
+      natm: { code: 'nm', tsdb: { id: null, rounds: 0 }, team: 133907, label: 'DFB', fullLabel: 'Nationalmannschaft', title: '⚽ Nationalmannschaft', gender: 'maenner' },
+      natf: { code: 'nf', tsdb: { id: null, rounds: 0 }, team: 136805, label: 'DFB', fullLabel: 'Nationalmannschaft der Frauen', title: '⚽ Nationalmannschaft der Frauen', gender: 'frauen' },
       // Spiele aller mit Stern markierten Teams. Geteilt wird das Spiel seiner
       // Liga (matchRow übergibt sie über leagueKey), daher ohne eigenen Code.
-      meine: { keys: [], tsdb: { id: null, rounds: 0 }, tsdbOnly: true, favorites: true, label: 'Meine Spiele', fullLabel: 'Meine Spiele', title: '⭐ Meine Spiele', gender: 'frauen' },
-      // Alle Spiele eines Vereins (Klick auf einen Vereinsnamen). Verein, Liga und
-      // Quelle stehen in S.club; Titel, Sportart und Geschlecht setzt openClub.
-      verein: { keys: [], tsdb: { id: null, rounds: 0 }, tsdbOnly: true, club: true, label: 'Verein', fullLabel: 'Verein', title: '⚽ Verein', gender: 'maenner' },
-      handball1: { code: 'hb', keys: [], tsdb: { id: 4533, rounds: 34 }, tsdbOnly: true, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
+      meine: { tsdb: { id: null, rounds: 0 }, favorites: true, label: 'Meine Spiele', fullLabel: 'Meine Spiele', title: '⭐ Meine Spiele', gender: 'frauen' },
+      // Alle Spiele eines Vereins (Klick auf einen Vereinsnamen). Verein und
+      // Liga stehen in S.club; Titel, Sportart und Geschlecht setzt openClub.
+      verein: { tsdb: { id: null, rounds: 0 }, club: true, label: 'Verein', fullLabel: 'Verein', title: '⚽ Verein', gender: 'maenner' },
+      handball1: { code: 'hb', tsdb: { id: 4533, rounds: 34 }, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
     };
 
     // Spielzeiten je Sportart: Halbzeitlänge, Pause und wie lange ein Spiel
@@ -1514,19 +1487,12 @@
 
     function isFootball() { return (leagueCfg().sport || 'fussball') === 'fussball'; }
 
-    const SOURCES = {
-      openligadb: { label: 'OpenLigaDB', url: 'https://www.openligadb.de' },
-      thesportsdb: { label: 'TheSportsDB', url: 'https://www.thesportsdb.com' },
-    };
-
-    const API = 'https://api.openligadb.de';
     const LIVE_POLL_MS = 60000;
 
     const NOW = new Date();
     const SEASON = NOW.getMonth() >= 7 ? NOW.getFullYear() : NOW.getFullYear() - 1;
 
     const TSDB_API = 'https://api.ligazeit.de/v1';
-    const TSDB_FREE = false;
     const TSDB_LIVE_API = 'https://api.ligazeit.de/v2/livescore/';
     const TSDB_SEASON_REFRESH_MS = 10 * 60000;
     const TSDB_SEASON = `${SEASON}-${SEASON + 1}`;
@@ -1535,42 +1501,22 @@
     const S = {
       league: 'maenner1', matches: [], mdays: {}, order: [], cur: 1, sel: 1,
       table: null, view: 'schedule', lastUpdate: null, pollTimer: null,
-      keyCache: {},
       openMatches: new Set(),  // IDs aufgeklappter Spiele, überlebt Neu-Rendern
-      source: 'thesportsdb',    // gewählte Datenquelle
-      loadedRounds: new Set(), // TheSportsDB gratis: bereits geladene Spieltage
       goalCache: new Map(),    // TheSportsDB: Spielverlauf je Spiel und Spielstand
-      live: new Map(),         // TheSportsDB Premium: Livescore je Spiel (idEvent)
-      oldbGoals: null,         // OpenLigaDB-Saison als Ersatzquelle für Torschützen
-      seasonLoadedAt: 0,       // TheSportsDB Premium: Zeitpunkt der letzten Saisonabfrage
+      live: new Map(),         // Livescore je Spiel (idEvent)
+      seasonLoadedAt: 0,       // Zeitpunkt der letzten Saisonabfrage
       tableNote: '',
-      club: null,              // Vereinsansicht: { lk, src, id, name, back }
-      share: null              // geteiltes Spiel aus einem Link: { lk, source, mid, scrolled }
+      club: null,              // Vereinsansicht: { lk, id, name, back }
+      share: null              // geteiltes Spiel aus einem Link: { lk, mid, scrolled }
     };
 
     // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const $ = id => document.getElementById(id);
 
     function leagueCfg(lk = S.league) { return LEAGUES[lk] || LEAGUES.maenner1; }
-    function leagueKey() { return S.keyCache[S.league] || leagueCfg().keys[0]; }
-
-    // Tatsächlich genutzte Quelle: TheSportsDB nur, wenn die Liga dort geführt wird.
-    function src() {
-      const l = leagueCfg();
-      if (l.tsdbOnly) return 'thesportsdb';
-      return S.source === 'thesportsdb' && l.tsdb ? 'thesportsdb' : 'openligadb';
-    }
-    function tsdbFreeMode() { return src() === 'thesportsdb' && TSDB_FREE; }
-
-    async function api(path) {
-      const r = await fetch(API + path);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    }
 
     // ━━━ TheSportsDB-Adapter ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Wandelt TheSportsDB-Daten in die Form von OpenLigaDB um, damit das
-    // Rendering für beide Quellen gleich bleibt.
+    // Wandelt TheSportsDB-Daten in eine einheitliche Spiel-Form um.
     async function tsdb(path) {
       const r = await fetch(TSDB_API + path);
       if (r.status === 429) throw new Error('Zu viele Anfragen – bitte in einer Minute erneut versuchen');
@@ -1620,7 +1566,7 @@
       const finished = !offLabel && (TSDB_FINISHED.has(status)
         || (!status && hasScore && Date.now() - Date.parse(when) > matchDurMs(lk)));
       return {
-        src: 'tsdb', matchID: id, matchDateTime: when,
+        matchID: id, matchDateTime: when,
         matchIsFinished: finished, seasonFinished: finished, matchIsOff: !!offLabel, offLabel,
         team1: { teamId: Number(e.idHomeTeam), teamName: e.strHomeTeam, shortName: e.strHomeTeam, teamIconUrl: tsdbBadge(e.strHomeTeamBadge) },
         team2: { teamId: Number(e.idAwayTeam), teamName: e.strAwayTeam, shortName: e.strAwayTeam, teamIconUrl: tsdbBadge(e.strAwayTeamBadge) },
@@ -1675,19 +1621,13 @@
       return out;
     }
 
-    // Gratis-Schlüssel: liefert einen kompletten Spieltag.
-    async function tsdbLoadRound(n) {
-      const j = await tsdb(`/eventsround.php?id=${tsdbLeagueId()}&r=${n}&s=${TSDB_SEASON}`);
-      return tsdbMatches(tsdbList(j, 'events'));
-    }
-
-    // Premium-Schlüssel: komplette Saison.
+    // Komplette Saison laden.
     async function tsdbLoadSeason(lk) {
       const j = await tsdb(`/eventsseason.php?id=${tsdbLeagueId(lk)}&s=${TSDB_SEASON}`);
       return tsdbMatches(tsdbList(j, 'events'), lk);
     }
 
-    // Premium: Saison laden und Zeitpunkt merken.
+    // Saison laden und Zeitpunkt merken.
     async function tsdbReloadSeason() {
       const matches = await tsdbLoadSeason();
       S.seasonLoadedAt = Date.now();
@@ -1742,19 +1682,6 @@
       m.liveMinute = v.minute;
     }
 
-    // Spieltag des nächsten Spiels, sonst des letzten Spiels dieser Saison.
-    async function tsdbGuessRound() {
-      for (const ep of ['eventsnextleague', 'eventspastleague']) {
-        try {
-          const j = await tsdb(`/${ep}.php?id=${tsdbLeagueId()}`);
-          const e = tsdbList(j, 'events').find(x => tsdbOwn(x) && x.strSeason === TSDB_SEASON);
-          const n = e ? Number(e.intRound) : NaN;
-          if (Number.isInteger(n) && n >= 1) return n;
-        } catch (e) { }
-      }
-      return 1;
-    }
-
     // Aktueller Spieltag: der des frühesten laufenden oder kommenden Spiels.
     function tsdbCurrentRound(fallback) {
       const now = Date.now();
@@ -1764,20 +1691,7 @@
       return next ? next.group.groupOrderID : (fallback ?? S.order[S.order.length - 1] ?? 1);
     }
 
-    // Gratis: Spieltage nachladen und mit den vorhandenen zusammenführen.
-    async function tsdbFetchRounds(rounds) {
-      const lists = await Promise.all(rounds.map(tsdbLoadRound));
-      const keep = S.matches.filter(m => !rounds.includes(m.group.groupOrderID));
-      rounds.forEach(n => S.loadedRounds.add(n));
-      applyMatches(keep.concat(lists.flat()));
-    }
-
-    async function tsdbEnsureRound(n) {
-      if (!tsdbFreeMode() || S.loadedRounds.has(n)) return;
-      await tsdbFetchRounds([n]);
-    }
-
-    // Spielverlauf aus der Timeline (gratis: max. 5 Einträge inkl. Karten).
+    // Spielverlauf aus der Timeline.
     // Annahme: strHome bezeichnet das Team der Spielerin/des Spielers, ein
     // Eigentor zählt also für das andere Team.
     function scoreKey(m) {
@@ -1785,15 +1699,12 @@
       return r ? `${r.pointsTeam1}:${r.pointsTeam2}` : '-';
     }
 
-    // TheSportsDB hat nicht für jede Liga einen Spielverlauf (z. B. Frauen-
-    // Bundesliga). Fehlen Tore, wird das passende Spiel bei OpenLigaDB gesucht
-    // und die Liste mit mehr Toren genommen. Ein unvollständiges Ergebnis wird
-    // nach GOALS_RETRY_MS erneut abgefragt, falls Tore nachgetragen werden.
+    // TheSportsDB trägt Tore teils erst Minuten nach Spielende nach. Ein
+    // unvollständiges Ergebnis wird nach GOALS_RETRY_MS erneut abgefragt.
     const GOALS_RETRY_MS = 3 * 60000;
-    const OLDB_GOALS_TTL_MS = 3 * 60000;
     const goalsInFlight = new Set();
 
-    // TheSportsDB-Timeline in das Tor-Format von OpenLigaDB umwandeln.
+    // TheSportsDB-Timeline in das Tor-Format der App umwandeln.
     // Annahme: strHome bezeichnet das Team der Spielerin/des Spielers, ein
     // Eigentor zählt also für das andere Team.
     async function tsdbTimelineGoals(id) {
@@ -1817,69 +1728,17 @@
         });
     }
 
-    // OpenLigaDB-Saison der aktuellen Liga, kurz zwischengespeichert.
-    async function oldbSeasonForGoals(league = S.league) {
-      const c = S.oldbGoals;
-      if (c && c.league === league) {
-        if (c.pending) return c.pending;
-        if (Date.now() - c.at < OLDB_GOALS_TTL_MS) return c.matches;
-      }
-      const pending = loadMatches(league)
-        .then(matches => { S.oldbGoals = { league, at: Date.now(), matches }; return matches; })
-        .catch(e => { S.oldbGoals = null; throw e; });
-      S.oldbGoals = { league, at: 0, matches: [], pending };
-      return pending;
-    }
-
-    // Vereinsnamen vergleichbar machen: "FC Bayern München" ~ "Bayern Munich Women".
-    const TEAM_STOPWORDS = new Set(['fc', 'sc', 'sv', 'vfl', 'vfb', 'tsg', 'sgs', 'bv', 'bsc', 'fsv', 'ev', 'eintr',
-      'women', 'woman', 'frauen', 'ladies', 'und', 'the']);
-    const TEAM_ALIASES = { munich: 'munchen', cologne: 'koln', nuremberg: 'nurnberg' };
-    function teamTokens(name) {
-      return String(name || '').toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/ae/g, 'a').replace(/oe/g, 'o').replace(/ue/g, 'u').replace(/ß/g, 'ss')
-        .split(/[^a-z0-9]+/)
-        .map(t => TEAM_ALIASES[t] || t)
-        .filter(t => t.length >= 3 && !/^\d+$/.test(t) && !TEAM_STOPWORDS.has(t));
-    }
-    function sameTeam(a, b) {
-      const A = teamTokens(a), B = teamTokens(b);
-      return A.some(x => B.some(y => x === y || (x.length >= 4 && y.length >= 4 && (x.startsWith(y) || y.startsWith(x)))));
-    }
-    function oldbTeamName(t) { return t ? `${t.teamName || ''} ${t.shortName || ''}` : ''; }
-
-    function findOldbMatch(m, list) {
-      const t = Date.parse(m.matchDateTime);
-      const time = o => Date.parse(o.matchDateTimeUTC || o.matchDateTime);
-      return list
-        .filter(o => o && Math.abs(time(o) - t) <= 3 * 3600e3
-          && sameTeam(oldbTeamName(o.team1), m.team1.teamName)
-          && sameTeam(oldbTeamName(o.team2), m.team2.teamName))
-        .sort((x, y) => Math.abs(time(x) - t) - Math.abs(time(y) - t))[0] || null;
-    }
-
-    function goalTotal(m) {
-      const r = finalResult(m);
-      return r ? (Number(r.pointsTeam1) || 0) + (Number(r.pointsTeam2) || 0) : 0;
-    }
-
     async function tsdbLoadGoals(m) {
-      const id = Number(m.matchID), key = scoreKey(m), total = goalTotal(m);
+      const id = Number(m.matchID), key = scoreKey(m);
       if (goalsInFlight.has(id)) return;
       goalsInFlight.add(id);
-      let goals = null, source = 'thesportsdb';
+      let goals = null;
       try { goals = await tsdbTimelineGoals(id); } catch (e) { }
-      if (!goals || goals.length < total) {
-        try {
-          const o = findOldbMatch(m, await oldbSeasonForGoals(m.leagueKey || S.league));
-          const og = o && Array.isArray(o.goals) ? o.goals : [];
-          if (og.length > (goals ? goals.length : 0)) { goals = og; source = 'openligadb'; }
-        } catch (e) { }
-      }
+      const r = finalResult(m);
+      const total = r ? (Number(r.pointsTeam1) || 0) + (Number(r.pointsTeam2) || 0) : 0;
       const entry = goals
-        ? { key, goals, error: false, source, incomplete: goals.length < total, at: Date.now() }
-        : { key, goals: [], error: true, source, incomplete: true, at: Date.now() };
+        ? { key, goals, error: false, incomplete: goals.length < total, at: Date.now() }
+        : { key, goals: [], error: true, incomplete: true, at: Date.now() };
       S.goalCache.set(id, entry);
       // Auf das aktuelle Spielobjekt anwenden (kann durch Refresh ersetzt sein)
       for (const x of S.matches) if (Number(x.matchID) === id) applyGoalCache(x);
@@ -1894,7 +1753,7 @@
 
     function applyGoalCache(m) {
       const c = S.goalCache.get(Number(m.matchID));
-      if (c && c.key === scoreKey(m)) { m.goals = c.goals; m.goalsError = c.error; m.goalsSource = c.source; }
+      if (c && c.key === scoreKey(m)) { m.goals = c.goals; m.goalsError = c.error; }
     }
 
     async function tsdbLoadTable() {
@@ -1909,8 +1768,7 @@
           matches: t.intPlayed, won: t.intWin, draw: t.intDraw, lost: t.intLoss,
           goals: t.intGoalsFor, opponentGoals: t.intGoalsAgainst, goalDiff: t.intGoalDifference, points: t.intPoints
         }));
-      S.tableNote = TSDB_FREE && table.length && table.length <= 5
-        ? 'Mit dem kostenlosen Zugang liefert TheSportsDB nur die ersten 5 Plätze.' : '';
+      S.tableNote = '';
       // Manche Ligen (z. B. Handball-Bundesliga) hat TheSportsDB ohne
       // Tabelle. Dann wird die Tabelle aus den beendeten Spielen berechnet.
       if (!table.length) {
@@ -1964,33 +1822,6 @@
         .map((t, i) => ({ ...t, rank: i + 1 }));
     }
 
-    // Lädt die Spiele der Saison und merkt sich den funktionierenden Shortcut.
-    async function loadMatches(lk = S.league) {
-      const keys = S.keyCache[lk] ? [S.keyCache[lk]] : leagueCfg(lk).keys;
-      let lastErr = null;
-      for (const key of keys) {
-        try {
-          const matches = await api(`/getmatchdata/${key}/${SEASON}`);
-          if (Array.isArray(matches) && matches.length) {
-            S.keyCache[lk] = key;
-            return matches;
-          }
-        } catch (e) { lastErr = e; }
-      }
-      if (lastErr) throw lastErr;
-      return [];
-    }
-
-    // Aktueller Spieltag: API bevorzugen, sonst aus den Spielen ableiten.
-    async function loadCurrentGroup(order) {
-      try {
-        const cg = await api(`/getcurrentgroup/${leagueKey()}`);
-        if (cg && order.includes(cg.groupOrderID)) return cg.groupOrderID;
-      } catch (e) { }
-      const open = order.find(n => S.mdays[n].matches.some(m => !m.matchIsFinished && !m.matchIsOff));
-      return open ?? order[order.length - 1] ?? 1;
-    }
-
     function finalResult(m) {
       if (!m.matchResults || !m.matchResults.length) return null;
       return m.matchResults.reduce((a, b) => a.resultOrderID > b.resultOrderID ? a : b);
@@ -2035,45 +1866,7 @@
 
     function fmtTime(d) { return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
     // ━━━ Team-Icons ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // OpenLigaDB liefert teils tote Links. Reihenfolge beim Laden:
-    // Override → API-URL → Icon desselben Vereins aus den Männer-Ligen
-    // → Wikimedia Special:FilePath → ausblenden.
-
-    // Bekannte tote Links; Schlüssel ist die URL, wie die API sie liefert.
-    // Leverkusen: die de-Datei ist weg, en.wikipedia führt das Wappen weiter.
-    const ICON_OVERRIDES = {
-      'https://upload.wikimedia.org/wikipedia/de/f/f7/Bayer_Leverkusen_Logo.svg':
-        'https://upload.wikimedia.org/wikipedia/en/5/59/Bayer_04_Leverkusen_logo.svg',
-    };
-
-    const MEN_KEYS = ['bl1', 'bl2', 'bl3'];
-
-    // Vereinsname → Vergleichsschlüssel, z. B. „Bayer 04 Leverkusen Frauen“
-    // und „Bayer 04 Leverkusen“ → „leverkusen“.
-    const CLUB_PREFIX = /^(fc|vfl|vfb|sv|sc|tsg|tsv|fsv|rb|sgs|spvgg|bv|bsc|ssv|msv|sg|vfr|fk|tus|sk|ac|as|cf|bayer|borussia|eintracht|union|arminia|fortuna|alemannia|hansa|dynamo|rot|weiss|weiß|preußen|kickers|holstein|energie|viktoria|turbine|frauen|women|ii|u23)$/i;
-    function clubKey(name) {
-      return (name || '').toLowerCase().split(/[^\p{L}\p{N}]+/u)
-        .filter(w => w && !CLUB_PREFIX.test(w) && !/^\d+$/.test(w)).join(' ');
-    }
-
-    // Wird erst beim ersten fehlgeschlagenen Icon geladen, dann gecacht.
-    let menIconsPromise = null;
-    function menIcons() {
-      if (!menIconsPromise) {
-        menIconsPromise = Promise.all(MEN_KEYS.map(k =>
-          api(`/getavailableteams/${k}/${SEASON}`).catch(() => [])
-        )).then(lists => {
-          const map = Object.create(null);
-          for (const t of lists.flat()) {
-            const k = clubKey(t.teamName);
-            const u = safeIconUrl(ICON_OVERRIDES[t.teamIconUrl] || t.teamIconUrl);
-            if (k && u && !map[k]) map[k] = u;
-          }
-          return map;
-        });
-      }
-      return menIconsPromise;
-    }
+    // Reihenfolge beim Laden: API-URL → Wikimedia Special:FilePath → ausblenden.
 
     // Ersatz-URL für Wikimedia-Uploads: Special:FilePath folgt Umbenennungen
     // und Verschiebungen nach Commons, der Hash-Pfad der API dagegen nicht.
@@ -2086,39 +1879,22 @@
 
     function teamIcon(t) {
       const orig = safeIconUrl(t.teamIconUrl);
-      const first = ICON_OVERRIDES[orig] || orig;
-      // Der Rückgriff auf Wappen der Fußball-Männerteams passt nur zu Fußball
-      // (sonst bekäme z. B. der HSV Hamburg im Handball das Fußballwappen).
-      const club = isFootball() ? clubKey(t.teamName) : '';
-      const attrs = `data-orig="${esc(orig)}" data-club="${esc(club)}"`;
-      if (!first) {
-        // Kein Icon von der API: gleich beim Männerteam nachsehen.
-        return `<img class="team-icon" alt="" ${attrs} data-stage="0" style="visibility:hidden" src="data:," onerror="iconFail(this)">`;
+      const attrs = `data-orig="${esc(orig)}"`;
+      if (!orig) {
+        return `<img class="team-icon" alt="" ${attrs} style="visibility:hidden" src="data:,">`;
       }
-      return `<img class="team-icon" src="${esc(first)}" alt="" loading="lazy" ${attrs} data-stage="0" onerror="iconFail(this)">`;
+      return `<img class="team-icon" src="${esc(orig)}" alt="" loading="lazy" ${attrs} onerror="iconFail(this)">`;
     }
 
-    async function iconFail(img) {
+    function iconFail(img) {
       const d = img.dataset;
-      const tried = new Set((d.tried || '').split(' ').filter(Boolean));
-      tried.add(img.getAttribute('src'));
-      const next = async stage => {
-        if (stage === 1) return d.orig;
-        if (stage === 2) return d.club ? (await menIcons())[d.club] : null;
-        if (stage === 3) return wikiFilePath(d.orig);
-        return undefined;
-      };
-      for (let stage = Number(d.stage) + 1; stage <= 3; stage++) {
-        const url = safeIconUrl(await next(stage));
-        if (url && !tried.has(url)) {
-          d.stage = stage;
-          d.tried = [...tried].join(' ');
-          img.style.visibility = '';
-          img.src = url;
-          return;
-        }
+      if (d.tried) { img.style.visibility = 'hidden'; return; }
+      const url = safeIconUrl(wikiFilePath(d.orig));
+      if (url && url !== img.getAttribute('src')) {
+        d.tried = '1';
+        img.src = url;
+        return;
       }
-      d.stage = 4;
       img.style.visibility = 'hidden';
     }
 
@@ -2140,7 +1916,7 @@
       catch (e) { return ''; }
     }
 
-    // Wappen-URLs stammen aus Community-Daten (OpenLigaDB, TheSportsDB). Nur
+    // Wappen-URLs stammen aus Community-Daten (TheSportsDB). Nur
     // diese Hosts werden geladen, sonst könnte ein eingetragenes "Wappen" als
     // Zählpixel dienen. Muss zur img-src-Liste der Content-Security-Policy passen.
     const ICON_HOSTS = [/^upload\.wikimedia\.org$/, /^commons\.wikimedia\.org$/, /^[a-z-]+\.wikipedia\.org$/,
@@ -2163,15 +1939,13 @@
       return g;
     }
 
-    // Spiele übernehmen; bei TheSportsDB gratis sind alle Spieltage als Reiter
-    // sichtbar, auch wenn sie erst beim Anklicken geladen werden.
     function applyMatches(matches) {
-      if (src() === 'thesportsdb') matches.forEach(m => { applyLive(m); applyGoalCache(m); });
+      matches.forEach(m => { applyLive(m); applyGoalCache(m); });
       S.matches = matches;
       S.mdays = groupByDay(matches);
       // Vereinsansicht: ganze Saison, daher neueste vergangene Spiele zuerst.
       if (leagueCfg().club && S.mdays[1]) S.mdays[1].matches.reverse();
-      const n = isListView() ? 2 : src() === 'thesportsdb' ? leagueCfg().tsdb.rounds : 0;
+      const n = isListView() ? 2 : leagueCfg().tsdb.rounds;
       const all = new Set(Object.keys(S.mdays).map(Number));
       for (let i = 1; i <= n; i++) all.add(i);
       S.order = [...all].sort((a, b) => roundOrder(a) - roundOrder(b));
@@ -2179,12 +1953,7 @@
 
     // Erstes Laden einer Liga; liefert den aktuellen Spieltag.
     async function loadInitial() {
-      S.loadedRounds = new Set();
       S.live = new Map();
-      if (src() === 'openligadb') {
-        applyMatches(await loadMatches());
-        return loadCurrentGroup(S.order);
-      }
       if (leagueCfg().favorites) {
         applyMatches(await loadFavorites());
         return S.mdays[2] && S.mdays[2].matches.length ? 2 : 1;
@@ -2197,19 +1966,11 @@
         applyMatches(await tsdbLoadTeam());
         return S.mdays[2] ? 2 : 1;
       }
-      if (!TSDB_FREE) {
-        applyMatches(await tsdbReloadSeason());
-        if (getLiveMatches().length) {
-          try { await tsdbLoadLive(); applyMatches(S.matches); } catch (e) { }
-        }
-        return tsdbCurrentRound();
+      applyMatches(await tsdbReloadSeason());
+      if (getLiveMatches().length) {
+        try { await tsdbLoadLive(); applyMatches(S.matches); } catch (e) { }
       }
-      // Gratis: vermuteten Spieltag und den davor laden, damit ein noch
-      // laufendes Spiel des Vortags-Spieltags nicht fehlt.
-      const guess = await tsdbGuessRound();
-      S.matches = [];
-      await tsdbFetchRounds(guess > 1 ? [guess - 1, guess] : [guess]);
-      return tsdbCurrentRound(guess);
+      return tsdbCurrentRound();
     }
 
     // ━━━ Live Polling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2218,21 +1979,14 @@
 
     async function refreshData(silent) {
       try {
-        if (src() === 'openligadb') applyMatches(await loadMatches());
-        else if (leagueCfg().favorites) applyMatches(await loadFavorites());
+        if (leagueCfg().favorites) applyMatches(await loadFavorites());
         else if (leagueCfg().club) applyMatches(await loadClub());
         else if (leagueCfg().team) applyMatches(await tsdbLoadTeam());
-        else if (!TSDB_FREE) {
+        else {
           let reload = Date.now() - S.seasonLoadedAt > TSDB_SEASON_REFRESH_MS;
           try { if (await tsdbLoadLive()) reload = true; }
           catch (e) { reload = true; }          // Feed nicht erreichbar: Saisondaten nehmen
           applyMatches(reload ? await tsdbReloadSeason() : S.matches);
-        }
-        else {
-          // Gratis: nur Spieltage mit Live-Spielen und den angezeigten neu laden
-          const rounds = new Set(getLiveMatches().map(m => m.group.groupOrderID));
-          if (S.loadedRounds.has(S.sel)) rounds.add(S.sel);
-          if (rounds.size) await tsdbFetchRounds([...rounds]);
         }
         S.lastUpdate = new Date();
         updateLiveIndicator();
@@ -2257,30 +2011,29 @@
     }
 
     // ━━━ Teilen: Link, Text, geteiltes Spiel öffnen ━━━━━━
-    // Geteilte Spiele stehen im Hash: #g=<Ligacode><Quelle><Spiel-ID>, z. B.
-    // #g=m1t1s3r. Quelle: o = OpenLigaDB, t = TheSportsDB; die Spiel-ID ist
-    // base36-kodiert. Liga, Quelle und Spiel-ID reichen aus, um die richtigen
-    // Daten zu laden – Spieltag und Saison ergeben sich aus dem Spiel, mehr
-    // steht bewusst nicht im Link.
+    // Geteilte Spiele stehen im Hash: #g=<Ligacode>t<Spiel-ID>, z. B.
+    // #g=m1t1s3r. Die Spiel-ID ist base36-kodiert. Liga und Spiel-ID reichen
+    // aus, um die richtigen Daten zu laden – Spieltag und Saison ergeben sich
+    // aus dem Spiel, mehr steht bewusst nicht im Link. Der Buchstabe t ist
+    // historisch (früher Kennung der Datenquelle) und bleibt aus Kompatibilität
+    // zu bestehenden Links Teil des Formats.
     const SHARE_LEAGUES = {};
     for (const [k, l] of Object.entries(LEAGUES)) if (l.code) SHARE_LEAGUES[l.code] = k;
     const SHARE_CODES = Object.keys(SHARE_LEAGUES).sort((a, b) => b.length - a.length);
-    const isTsdbMatch = m => m.src === 'tsdb';
 
     function tokenOf(m) {
       const id = Number(m.matchID);
       const code = leagueCfg(m.leagueKey || S.league).code;
       return code && Number.isInteger(id) && id > 0
-        ? code + (isTsdbMatch(m) ? 't' : 'o') + id.toString(36) : null;
+        ? code + 't' + id.toString(36) : null;
     }
 
     function parseShareToken(t) {
       for (const code of SHARE_CODES) {
         if (!t.startsWith(code)) continue;
-        const q = t[code.length];
         const mid = parseInt(t.slice(code.length + 1), 36);
-        if ((q === 'o' || q === 't') && Number.isInteger(mid) && mid > 0) {
-          return { lk: SHARE_LEAGUES[code], source: q === 't' ? 'thesportsdb' : 'openligadb', mid };
+        if (Number.isInteger(mid) && mid > 0) {
+          return { lk: SHARE_LEAGUES[code], mid };
         }
         return null;
       }
@@ -2290,14 +2043,6 @@
     function readShareHash() {
       const m = /^#g=([a-z0-9]+)$/.exec(String(location.hash || '').toLowerCase());
       return m ? parseShareToken(m[1]) : null;
-    }
-
-    // Führt die Liga die Quelle des Links? (sonst erzwingt src() die richtige)
-    function linkSourceOk(lk, source) {
-      const l = leagueCfg(lk);
-      return source === 'thesportsdb'
-        ? !!(l.tsdbOnly || (l.tsdb && l.tsdb.id))
-        : l.keys.length > 0;
     }
 
     // Share-Text: wer, wann, Liga (die wichtigsten Infos zum Spiel).
@@ -2397,8 +2142,7 @@
       const t = parseShareToken(btn.dataset.share || '');
       if (!t) return;
       const m = S.matches.find(x => Number(x.matchID) === t.mid
-        && (x.leagueKey || S.league) === t.lk
-        && isTsdbMatch(x) === (t.source === 'thesportsdb'));
+        && (x.leagueKey || S.league) === t.lk);
       if (m) shareMatch(m, btn);
     }
 
@@ -2406,14 +2150,12 @@
     function findSharedMatch() {
       if (!S.share) return null;
       return S.matches.find(m => Number(m.matchID) === S.share.mid
-        && (m.leagueKey || S.league) === S.share.lk
-        && isTsdbMatch(m) === (S.share.source === 'thesportsdb')) || null;
+        && (m.leagueKey || S.league) === S.share.lk) || null;
     }
 
     function isSharedMatch(m) {
       return !!S.share && (m.leagueKey || S.league) === S.share.lk
-        && Number(m.matchID) === S.share.mid
-        && isTsdbMatch(m) === (S.share.source === 'thesportsdb');
+        && Number(m.matchID) === S.share.mid;
     }
 
     function scrollSharedRow() {
@@ -2426,27 +2168,18 @@
       setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     }
 
-    // Hash-Ziel anwenden: Liga und Quelle einstellen, Spieltag wählen,
-    // Spiel hervorheben. Aufruf beim ersten Laden und bei hashchange.
+    // Hash-Ziel anwenden: Liga einstellen, Spieltag wählen, Spiel hervorheben.
+    // Aufruf beim ersten Laden und bei hashchange.
     function applyShareTarget(t) {
-      const okSrc = linkSourceOk(t.lk, t.source);
-      const srcChanged = okSrc && S.source !== t.source;
-      if (okSrc) S.source = t.source;
-      S.share = { lk: t.lk, source: t.source, mid: t.mid, scrolled: false };
+      S.share = { lk: t.lk, mid: t.mid, scrolled: false };
       if (S.league === t.lk) {
-        const sm = srcChanged ? null : findSharedMatch();
-        if (!srcChanged) {
-          if (sm) {
-            switchView('schedule');
-            S.sel = sm.group.groupOrderID;
-            renderTabs(); renderMatches();
-            scrollSharedRow();
-          }
-          return;
+        const sm = findSharedMatch();
+        if (sm) {
+          switchView('schedule');
+          S.sel = sm.group.groupOrderID;
+          renderTabs(); renderMatches();
+          scrollSharedRow();
         }
-        // Andere Quelle: Daten wie beim Umschalten neu laden.
-        S.table = null; S.openMatches.clear(); stopPolling();
-        switchView('schedule'); init();
         return;
       }
       switchLeague(t.lk);
@@ -2576,9 +2309,9 @@
     function goalsBlock(m) {
       const id = Number(m.matchID);
       const cached = S.goalCache.get(id);
-      const retry = m.src === 'tsdb' && cached && cached.key === scoreKey(m)
+      const retry = cached && cached.key === scoreKey(m)
         && cached.incomplete && Date.now() - cached.at > GOALS_RETRY_MS;
-      if (m.src === 'tsdb' && (m.goals == null || retry)) {
+      if (m.goals == null || retry) {
         tsdbLoadGoals(m);
         return `<div class="goals" id="goals-${id}"><div class="g-empty">Spielverlauf wird geladen…</div></div>`;
       }
@@ -2593,7 +2326,7 @@
           s1: Number(g.scoreTeam1), s2: Number(g.scoreTeam2),
           min: Number.isFinite(Number(g.matchMinute)) && g.matchMinute !== null ? Number(g.matchMinute) : null,
           name: String(g.goalGetterName || '').trim(),
-          pen: g.isPenalty === true, og: g.isOwnGoal === true, et: g.isOvertime === true
+          pen: g.isPenalty === true, og: g.isOwnGoal === true
         }))
         .sort((a, b) => (a.s1 + a.s2) - (b.s1 + b.s2) || (a.min ?? 999) - (b.min ?? 999));
 
@@ -2623,19 +2356,11 @@
       } else if (goals.length < total) {
         html += '<div class="g-empty">Nicht alle Tore sind eingetragen.</div>';
       }
-      if (goals.length && m.src === 'tsdb' && m.goalsSource === 'openligadb') {
-        html += '<div class="g-empty">Torschützen laut OpenLigaDB</div>';
-      }
       return `<div class="goals" id="goals-${id}">${html}</div>`;
     }
 
-    // OpenLigaDB markiert Tore in der Nachspielzeit mit isOvertime und zählt die
-    // Minute weiter (91 = 90.+1). Ligaspiele haben keine Verlängerung.
     function fmtGoalMinute(g) {
-      if (g.min === null) return '–';
-      if (g.et && g.min > 90) return `90+${g.min - 90}'`;
-      if (g.et && g.min > 45 && g.min <= 60) return `45+${g.min - 45}'`;
-      return `${g.min}'`;
+      return g.min === null ? '–' : `${g.min}'`;
     }
 
     function toggleMatch(row) {
@@ -2702,9 +2427,9 @@
         const df = Number(t.goalDiff), dc = df > 0 ? 'pos' : df < 0 ? 'neg' : '', ds = df > 0 ? '+' + num(df) : num(df);
         const rk = Number.isInteger(t.rank) && t.rank > 0 ? t.rank : i + 1;
         const tid = Number(t.teamId ?? t.teamInfoId);
-        const fe = Number.isInteger(tid) && tid > 0 ? favEntry(S.league, src(), tid, t.teamName) : null;
+        const fe = Number.isInteger(tid) && tid > 0 ? favEntry(S.league, tid, t.teamName) : null;
         const star = fe ? `<button class="fav-star${isFav(fe) ? ' on' : ''}" type="button" data-fav="${tid}" data-name="${esc(t.teamName || '')}" aria-pressed="${isFav(fe)}" aria-label="${esc(t.teamName || '')} ${isFav(fe) ? 'nicht mehr ' : ''}als Favorit merken">${isFav(fe) ? '★' : '☆'}</button>` : '';
-        const ca = clubAttrsFor(S.league, src(), t);
+        const ca = clubAttrsFor(S.league, t);
         return `<tr><td class="rk">${rk}</td><td><div class="tc">${ic}<span${ca ? ` class="club-link"${ca}` : ''}>${nm}</span>${star}</div></td>
       <td class="c">${num(t.matches)}</td><td class="c">${num(t.won)}</td><td class="c">${num(t.draw)}</td><td class="c">${num(t.lost)}</td>
       <td class="c">${num(t.goals)}:${num(t.opponentGoals)}</td><td class="diff ${dc}">${ds}</td><td class="pts">${num(t.points)}</td></tr>`;
@@ -2719,7 +2444,8 @@
     // ━━━ Favoriten ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Gespeichert nur im Browser. Ein Eintrag gilt für das Team in der Liga,
     // in deren Tabelle der Stern gesetzt wurde, plus die Champions League
-    // desselben Geschlechts (gleiche TheSportsDB-Team-ID).
+    // desselben Geschlechts (gleiche TheSportsDB-Team-ID). Ältere Einträge mit
+    // einer Quellenangabe (src) stammen aus OpenLigaDB-Zeiten und entfallen.
     const FAV_STORE = 'bl-favorites';
     const FAV_PAST_DAYS = 14, FAV_NEXT_DAYS = 45;
     let favCache = null;
@@ -2728,7 +2454,7 @@
       if (favCache) return favCache;
       try {
         const v = JSON.parse(localStorage.getItem(FAV_STORE) || '[]');
-        favCache = Array.isArray(v) ? v.filter(f => f && LEAGUES[f.lk] && SOURCES[f.src] && Number.isInteger(f.id)) : [];
+        favCache = Array.isArray(v) ? v.filter(f => f && !f.src && LEAGUES[f.lk] && Number.isInteger(f.id)) : [];
       } catch (e) { favCache = []; }
       return favCache;
     }
@@ -2736,8 +2462,8 @@
       favCache = list;
       try { localStorage.setItem(FAV_STORE, JSON.stringify(list)); } catch (e) { }
     }
-    function favEntry(lk, source, id, name) { return { lk, src: source, id: Number(id), name: name || '' }; }
-    const favSame = (a, b) => a.lk === b.lk && a.src === b.src && a.id === b.id;
+    function favEntry(lk, id, name) { return { lk, id: Number(id), name: name || '' }; }
+    const favSame = (a, b) => a.lk === b.lk && a.id === b.id;
     function isFav(f) { return getFavs().some(x => favSame(x, f)); }
     function toggleFav(f) {
       const list = getFavs();
@@ -2745,9 +2471,8 @@
     }
     // Ist dieses Team (unabhängig von der Liga) ein Favorit?
     function isFavTeam(m, t) {
-      const source = m.src === 'tsdb' ? 'thesportsdb' : 'openligadb';
       const id = Number(t.teamId);
-      return Number.isInteger(id) && id > 0 && getFavs().some(f => f.src === source && f.id === id);
+      return Number.isInteger(id) && id > 0 && getFavs().some(f => f.id === id);
     }
     function setStar(btn, on, name) {
       btn.classList.toggle('on', on);
@@ -2757,22 +2482,21 @@
       btn.title = on ? 'Favorit entfernen' : 'Als Favorit merken';
     }
 
-    // Spiele der Teams `entries` ({ lk, src, id }) aus allen betroffenen
-    // Wettbewerben einsammeln: je Liga und Quelle die Team-IDs, die dort
-    // interessieren. Liefert die Ergebnisse von Promise.allSettled.
+    // Spiele der Teams `entries` ({ lk, id }) aus allen betroffenen
+    // Wettbewerben einsammeln: je Liga die Team-IDs, die dort interessieren.
+    // Liefert die Ergebnisse von Promise.allSettled.
     function collectTeamMatches(entries) {
       const plan = new Map();
-      const want = (lk, source, id) => {
-        const k = `${source}|${lk}`;
-        if (!plan.has(k)) plan.set(k, { lk, src: source, ids: new Set() });
-        plan.get(k).ids.add(id);
+      const want = (lk, id) => {
+        if (!plan.has(lk)) plan.set(lk, { lk, ids: new Set() });
+        plan.get(lk).ids.add(id);
       };
       for (const f of entries) {
         const l = LEAGUES[f.lk];
-        want(f.lk, f.src, f.id);
-        // Europapokal dazu (nur TheSportsDB: dieselbe Team-ID in beiden Wettbewerben)
-        if (f.src === 'thesportsdb' && !l.team && !l.cup && (l.sport || 'fussball') === 'fussball') {
-          want(l.gender === 'frauen' ? 'uwcl' : 'ucl', 'thesportsdb', f.id);
+        want(f.lk, f.id);
+        // Europapokal dazu (dieselbe Team-ID in beiden Wettbewerben)
+        if (!l.team && !l.cup && (l.sport || 'fussball') === 'fussball') {
+          want(l.gender === 'frauen' ? 'uwcl' : 'ucl', f.id);
         }
       }
       return Promise.allSettled([...plan.values()].map(async p => {
@@ -2782,7 +2506,7 @@
           const lists = await Promise.all([...p.ids].map(id => tsdbLoadTeam(p.lk, id)));
           return lists.flat().map(m => Object.assign(m, { leagueKey: p.lk }));
         }
-        const all = p.src === 'openligadb' ? await loadMatches(p.lk) : await tsdbLoadSeason(p.lk);
+        const all = await tsdbLoadSeason(p.lk);
         return all
           .filter(m => p.ids.has(Number(m.team1 && m.team1.teamId)) || p.ids.has(Number(m.team2 && m.team2.teamId)))
           .map(m => Object.assign(m, { competition: l.fullLabel, leagueKey: p.lk }));
@@ -2796,7 +2520,7 @@
       for (const r of parts) {
         if (r.status !== 'fulfilled') continue;
         for (const m of r.value) {
-          const key = `${m.src || 'oldb'}:${m.matchID}`;
+          const key = String(m.matchID);
           if (seen.has(key)) continue;
           seen.add(key);
           const t = Date.parse(m.matchDateTime);
@@ -2826,28 +2550,28 @@
     async function loadClub() {
       const c = S.club;
       if (!c) return [];
-      return sortPastNext(await collectTeamMatches([favEntry(c.lk, c.src, c.id, c.name)]));
+      return sortPastNext(await collectTeamMatches([favEntry(c.lk, c.id, c.name)]));
     }
 
     // Titel-Stern: Nationalmannschaft bzw. Verein der Vereinsansicht.
     function titleFav() {
       const l = leagueCfg();
-      if (l.team) return favEntry(S.league, 'thesportsdb', l.team, l.fullLabel);
-      if (l.club && S.club) return favEntry(S.club.lk, S.club.src, S.club.id, S.club.name);
+      if (l.team) return favEntry(S.league, l.team, l.fullLabel);
+      if (l.club && S.club) return favEntry(S.club.lk, S.club.id, S.club.name);
       return null;
     }
 
     // Attribute für einen anklickbaren Vereinsnamen; leer, wenn die Ansicht
     // keinen Verein ansteuern kann (keine Team-ID).
-    function clubAttrsFor(lk, source, t) {
+    function clubAttrsFor(lk, t) {
       const id = Number(t && (t.teamId ?? t.teamInfoId));
       const l = LEAGUES[lk];
       if (!l || l.club || l.favorites || !Number.isInteger(id) || id <= 0) return '';
       const name = t.teamName || t.shortName || '';
-      return ` data-club-id="${id}" data-club-lk="${esc(lk)}" data-club-src="${esc(source)}" data-club-name="${esc(name)}" role="link" tabindex="0" title="Alle Spiele: ${esc(name)}"`;
+      return ` data-club-id="${id}" data-club-lk="${esc(lk)}" data-club-name="${esc(name)}" role="link" tabindex="0" title="Alle Spiele: ${esc(name)}"`;
     }
     function clubAttrs(m, t) {
-      return clubAttrsFor(m.leagueKey || S.league, m.src === 'tsdb' ? 'thesportsdb' : 'openligadb', t);
+      return clubAttrsFor(m.leagueKey || S.league, t);
     }
 
     // Die Vereinsauswahl erscheint nur, solange eine Vereinsansicht offen ist.
@@ -2865,15 +2589,15 @@
     }
 
     function openClub(c) {
-      if (!c || !LEAGUES[c.lk] || !SOURCES[c.src] || !Number.isInteger(c.id) || c.id <= 0) return;
+      if (!c || !LEAGUES[c.lk] || !Number.isInteger(c.id) || c.id <= 0) return;
       const inClub = S.league === 'verein' && !!S.club;
-      if (inClub && S.club.src === c.src && S.club.id === c.id) return;   // schon offen
+      if (inClub && S.club.id === c.id) return;   // schon offen
       // Ist der Verein ein Favorit, gilt die Liga seines Sterns (statt z. B. nur Champions League).
-      const fav = getFavs().find(f => f.src === c.src && f.id === c.id);
+      const fav = getFavs().find(f => f.id === c.id);
       const lk = fav ? fav.lk : c.lk;
       const base = LEAGUES[lk];
       const name = c.name || (fav && fav.name) || 'Verein';
-      S.club = { lk, src: c.src, id: c.id, name, back: inClub ? S.club.back : S.league };
+      S.club = { lk, id: c.id, name, back: inClub ? S.club.back : S.league };
       Object.assign(LEAGUES.verein, {
         sport: base.sport, gender: base.gender, fullLabel: name, label: name,
         title: `${base.sport === 'handball' ? '🤾' : '⚽'} ${name}`
@@ -2892,7 +2616,7 @@
 
     function clubFromEl(el) {
       const d = el.dataset;
-      return { lk: d.clubLk, src: d.clubSrc, id: Number(d.clubId), name: d.clubName };
+      return { lk: d.clubLk, id: Number(d.clubId), name: d.clubName };
     }
     // true, wenn der Klick ein Vereinsname war.
     function onClubClick(e) {
@@ -2923,7 +2647,7 @@
       if (onClubClick(e)) return;
       const b = e.target.closest('.fav-star');
       if (!b) return;
-      const f = favEntry(S.league, src(), b.dataset.fav, b.dataset.name);
+      const f = favEntry(S.league, b.dataset.fav, b.dataset.name);
       toggleFav(f);
       setStar(b, isFav(f), f.name);
     });
@@ -2950,11 +2674,11 @@
     }
 
     async function loadTable() {
-      const league = S.league, source = src();
+      const league = S.league;
       try {
         S.tableNote = '';
-        const table = source === 'thesportsdb' ? await tsdbLoadTable() : await api(`/getbltable/${leagueKey()}/${SEASON}`);
-        if (S.league !== league || src() !== source) return;   // inzwischen gewechselt
+        const table = await tsdbLoadTable();
+        if (S.league !== league) return;   // inzwischen gewechselt
         S.table = Array.isArray(table) ? table : [];
         renderTable();
       }
@@ -2975,24 +2699,11 @@
     }
 
     // ━━━ Events ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    $('tabsMD').addEventListener('click', async e => {
+    $('tabsMD').addEventListener('click', e => {
       const t = e.target.closest('.md-tab');
       if (!t) return;
-      const n = parseInt(t.dataset.md), league = S.league;
-      S.sel = n;
+      S.sel = parseInt(t.dataset.md);
       renderTabs();
-      if (tsdbFreeMode() && !S.loadedRounds.has(n)) {
-        $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spieltag wird geladen…</span></div></div>';
-        try { await tsdbEnsureRound(n); }
-        catch (err) {
-          if (S.sel === n && S.league === league) {
-            $('viewSchedule').innerHTML = `<div class="card"><div class="state-msg"><div class="ico">⚠️</div><h3>Spieltag konnte nicht geladen werden</h3>
-          <p>${esc(err.message)}</p><button class="btn-retry" onclick="document.querySelector('.md-tab.active')?.click()">Erneut versuchen</button></div></div>`;
-          }
-          return;
-        }
-        if (S.sel !== n || S.league !== league) return;   // inzwischen weitergeklickt
-      }
       renderMatches(); updateLiveIndicator();
     });
 
@@ -3006,26 +2717,6 @@
     });
 
     $('btnRefresh').addEventListener('click', () => { S.table = null; init(); });
-
-    // ━━━ Datenquelle ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function renderSource() {
-      const cur = SOURCES[src()];
-      $('sourceSelect').value = S.source;
-      $('sourceLink').textContent = cur.label;
-      $('sourceLink').href = cur.url;
-      $('sourceNote').textContent = leagueCfg().favorites || leagueCfg().club ? ''
-        : S.source === 'thesportsdb' && src() !== 'thesportsdb'
-        ? ' (TheSportsDB führt diese Liga nicht)'
-        : S.source === 'openligadb' && src() !== 'openligadb' ? ' (OpenLigaDB führt diese Liga nicht)' : '';
-    }
-
-    $('sourceSelect').addEventListener('change', e => {
-      const v = e.target.value;
-      if (!SOURCES[v] || v === S.source) return;
-      S.source = v; S.table = null; S.openMatches.clear(); stopPolling();
-      try { localStorage.setItem('bl-source', v); } catch (err) { }
-      switchView('schedule'); init();
-    });
 
     // ━━━ Design: 1. gespeicherte Wahl, 2. Systemeinstellung ━━━━━━━━
     const THEME_KEY = 'bl-theme';
@@ -3096,7 +2787,7 @@
     async function init() {
       const rb = $('btnRefresh'); rb.classList.add('spin');
       $('badgeSeason').textContent = SEASON + '/' + String(SEASON + 1).slice(-2);
-      renderLeagueSwitch(); renderSource();
+      renderLeagueSwitch();
       $('viewSchedule').innerHTML = '<div class="card"><div class="state-msg"><div class="spinner"></div><span>Spielplan wird geladen…</span></div></div>';
       $('tabsMD').innerHTML = '<span class="md-label">Spieltag</span>';
       try {
@@ -3125,25 +2816,21 @@
       if (saved === 'maenner') localStorage.setItem('bl-league', 'maenner1');
       const current = localStorage.getItem('bl-league');
       if (current && LEAGUES[current] && !LEAGUES[current].club) S.league = current;
-      const source = localStorage.getItem('bl-source');
-      if (source && SOURCES[source]) S.source = source;
     } catch (e) { }
 
     // Geteiltes Spiel aus der URL übernehmen, bevor die Daten geladen werden.
-    // Die Liga wird wie beim Umschalten gespeichert, die Quelle nicht – sie
-    // gehört zum Link, nicht zur Wahl des Empfängers.
+    // Die Liga wird wie beim Umschalten gespeichert.
     const shareTarget = readShareHash();
     if (shareTarget) {
       S.league = shareTarget.lk;
-      if (linkSourceOk(shareTarget.lk, shareTarget.source)) S.source = shareTarget.source;
-      S.share = { lk: shareTarget.lk, source: shareTarget.source, mid: shareTarget.mid, scrolled: false };
+      S.share = { lk: shareTarget.lk, mid: shareTarget.mid, scrolled: false };
       try { localStorage.setItem('bl-league', shareTarget.lk); } catch (e) { }
     }
 
     // Link im bereits offenen Tab (z. B. Zurück-Button) erneut anwenden.
     window.addEventListener('hashchange', () => {
       const t = readShareHash();
-      if (!t || (S.share && S.share.lk === t.lk && S.share.source === t.source && S.share.mid === t.mid)) return;
+      if (!t || (S.share && S.share.lk === t.lk && S.share.mid === t.mid)) return;
       applyShareTarget(t);
     });
 
