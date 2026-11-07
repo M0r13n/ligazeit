@@ -1378,6 +1378,9 @@
         <optgroup label="Handball">
           <option value="handball1">Handball-Bundesliga</option>
         </optgroup>
+        <optgroup label="Basketball">
+          <option value="basketball1">Basketball-Bundesliga</option>
+        </optgroup>
       </select>
       <div class="view-toggle" id="viewToggle">
         <button class="view-btn live-btn" data-view="live"><span class="live-dot"></span> Live</button>
@@ -1450,6 +1453,7 @@
       // Liga stehen in S.club; Titel, Sportart und Geschlecht setzt openClub.
       verein: { tsdb: { id: null, rounds: 0 }, club: true, label: 'Verein', fullLabel: 'Verein', title: '⚽ Verein', gender: 'maenner' },
       handball1: { code: 'hb', tsdb: { id: 4533, rounds: 34 }, sport: 'handball', label: '1. Liga', fullLabel: 'Handball-Bundesliga', title: '🤾 Handball-Bundesliga', gender: 'maenner' },
+      basketball1: { code: 'bb', tsdb: { id: 4441, rounds: 34 }, sport: 'basketball', label: '1. Liga', fullLabel: 'Basketball-Bundesliga', title: '🏀 Basketball-Bundesliga', gender: 'maenner' },
     };
 
     // Spielzeiten je Sportart: Halbzeitlänge, Pause und wie lange ein Spiel
@@ -1458,6 +1462,7 @@
     const SPORTS = {
       fussball: { half: 45, pause: 15, durMin: 130, goalDetails: true },
       handball: { half: 30, pause: 15, durMin: 95, goalDetails: false },
+      basketball: { half: 20, pause: 15, durMin: 130, goalDetails: false },
     };
     function sportCfg(lk) { return SPORTS[leagueCfg(lk).sport || 'fussball']; }
     function matchDurMs(lk) { return sportCfg(lk).durMin * 60000; }
@@ -2600,7 +2605,7 @@
       S.club = { lk, id: c.id, name, back: inClub ? S.club.back : S.league };
       Object.assign(LEAGUES.verein, {
         sport: base.sport, gender: base.gender, fullLabel: name, label: name,
-        title: `${base.sport === 'handball' ? '🤾' : '⚽'} ${name}`
+        title: `${({ handball: '🤾', basketball: '🏀' })[base.sport] || '⚽'} ${name}`
       });
       if (!inClub) { try { history.pushState({ ligazeitClub: 1 }, ''); } catch (e) { } }
       switchLeague('verein', true);
