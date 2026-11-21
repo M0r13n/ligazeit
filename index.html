@@ -1569,7 +1569,7 @@
       const hasScore = s1 !== null && s2 !== null;
       const offLabel = TSDB_OFF[status] || (String(e.strPostponed || '').toLowerCase() === 'yes' ? 'Verlegt' : '');
       const finished = !offLabel && (TSDB_FINISHED.has(status)
-        || (!status && hasScore && Date.now() - Date.parse(when) > matchDurMs(lk)));
+        || (hasScore && (!status || Date.now() - Date.parse(when) > matchDurMs(lk))));
       return {
         matchID: id, matchDateTime: when,
         matchIsFinished: finished, seasonFinished: finished, matchIsOff: !!offLabel, offLabel,
